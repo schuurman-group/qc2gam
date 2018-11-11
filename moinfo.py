@@ -36,7 +36,7 @@ class atom:
 
         # coordinates
         if coords is None:
-            self.coords = np.zeros(3,dtype=float)
+            self.coords = [0. for i in range(3)]
         else:
             self.coords = coords
 
@@ -130,11 +130,6 @@ class orbitals:
         np.linalg.norm(self.mo_vectors(:,mo_i))
         return
 
-    # convert mos from cartesian basis to spherical basis
-    def cart2sph(self, basis_set):
-    
-        return
-
     # urconvert mos from spherical basis to cartesian basis
     def sph2cart(self, basis_set):
 
@@ -185,6 +180,7 @@ class basis_function:
         self.exps.extend(expo)
         self.coefs.extend(coef)
         self.n_prim += 1
+        return
 
     def print_basis_function(self, file_handle):
        
@@ -218,6 +214,7 @@ class basis_set:
         self.basis_funcs[atom_i].extend(bf)
         self.n_cont[atom_i]      += 1
         self.basis_funcs[atom_i] += n_per_shell[bf.ang_mom]
+        return
 
     # print  the data section of a GAMESS style input file
     def print_basis_set(self, file_name):
