@@ -203,10 +203,10 @@ class orbitals:
         n_row = int(math.ceil(self.naos/n_col))
 
         mo_row = ('{:>2d}'+' '+'{:>2d}'+''.join('{:15.8e}' for i in range(n_col))+'\n')
-        mo_lab = mo_i % 100
+        mo_lab = (mo_i+1) % 100
 
         for i in range(n_row):
-            r_data = [mo_lab, i]
+            r_data = [mo_lab, i+1]
             r_data.extend(self.mo_vectors[5*i:5*(i+1),mo_i].tolist())
             file_handle.write(mo_row.format(*r_data))
 
