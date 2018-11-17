@@ -11,13 +11,15 @@ a_symbols       = [' H','HE',
                    'LI','BE',' B',' C',' N',' O',' F','NE',
                    'NA','MG','AL','SI',' P',' S','CL','AR']
 
-a_numbers       = ['1.0','2.0',
-                   '3.0','4.0','5.0','6.0','7.0','8.0','9.0','10.0',
+a_numbers       = [ '1.0', '2.0',
+                    '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0','10.0',
                    '11.0','12.0','13.0','14.0','15.0','16.0','17.0','18.0']
 
 ang_mom_sym     = ['S','P','D','F','G','H','I']
 
-nfunc_per_shell = [1, 3, 6, 10, 15, 21, 28] 
+nfunc_cart      = [1, 3, 6, 10] 
+
+nfunc_sph       = [1, 3, 5, 7]
 
 ao_ordr         = [['s'],
                    ['px','py','pz'],
@@ -25,11 +27,16 @@ ao_ordr         = [['s'],
                    ['fxxx','fyyy','fzzz','fxxy','fxxz',
                     'fxyy','fyyz','fxzz','fyzz','fxyz']]
 
+#ao_norm         = [[1.],
+#                   [1.,1.,1.],
+#                   [1.,1.,1.,1./np.sqrt(3.),1./np.sqrt(3.),1./np.sqrt(3.)],
+#                   [1.,1.,1.,1./np.sqrt(5.),1./np.sqrt(5.),1./np.sqrt(5.),
+#                             1./np.sqrt(5.),1./np.sqrt(5.),1./np.sqrt(5.),1./np.sqrt(15.)]]
+
 ao_norm         = [[1.],
                    [1.,1.,1.],
-                   [1.,1.,1.,1./np.sqrt(3.),1./np.sqrt(3.),1./np.sqrt(3.)],
-                   [1.,1.,1.,1./np.sqrt(5.),1./np.sqrt(5.),1./np.sqrt(5.),
-                             1./np.sqrt(5.),1./np.sqrt(5.),1./np.sqrt(5.),1./np.sqrt(15.)]]
+                   [1.,1.,1.,1.,1.,1.],
+                   [1.,1.,1.,1.,1.,1.,1.,1.,1.,1.]]
   
 # wrapper for all requisite data about an atom
 class atom:
@@ -175,11 +182,6 @@ class orbitals:
         np.linalg.norm(self.mo_vectors[:,mo_i])
         return
 
-    # urconvert mos from spherical basis to cartesian basis
-    def sph2cart(self, basis_set):
-
-        return
-
     # print orbitals in gamess style VEC format
     def print_orbitals(self, file_name, n_orb=None):
         """Documentation to come"""
@@ -202,7 +204,7 @@ class orbitals:
         n_col = 5 # this is set by GAMESS format
         n_row = int(math.ceil(self.naos/n_col))
 
-        mo_row = ('{:>2d}'+' '+'{:>2d}'+''.join('{:15.8e}' for i in range(n_col))+'\n')
+        mo_row = ('{:>2d}'+' '+'{:>2d}'+''.join('{:15.8E}' for i in range(n_col))+'\n')
         mo_lab = (mo_i+1) % 100
 
         for i in range(n_row):
@@ -267,7 +269,7 @@ class basis_set:
     def add_function(self, atom_i, bf):
         self.basis_funcs[atom_i].extend([bf])
         self.n_cont[atom_i] += 1
-        self.n_func         += nfunc_per_shell[bf.ang_mom]
+        self.n_func         += nfunc_cart[bf.ang_mom]
         return
 
     # print  the data section of a GAMESS style input file
