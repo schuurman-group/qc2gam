@@ -16,27 +16,21 @@ ao_ordr         = [['s'],
                    ['fxxx','fxxy','fxxz','fxyy','fxyz',
                     'fxzz','fyyy','fyyz','fyzz','fzzz']]
 
-#ao_norm         = [[1.],
-#                   [1., 1., 1.],
-#                   [1./np.sqrt(3.), 1./np.sqrt(3.), 1./np.sqrt(3.), 
-#                    1./np.sqrt(3.), 1./np.sqrt(3.), 1./np.sqrt(3.)],
-#                   [1./np.sqrt(15.),np.sqrt(5./3.),np.sqrt(5./3.),
-#                    np.sqrt(5./3.),np.sqrt(15.),1/np.sqrt(5./3.),
-#                    1./np.sqrt(15.),np.sqrt(5./3.),np.sqrt(5./3.),
-#                    1./np.sqrt(15.)]]
-
 ao_norm         = [[1.],
                    [1.,1.,1.],
-                   [1.,1.,1.,1.,1.,1.],
-                   [1.,1.,1.,1.,1.,1.,1.,1.,1.,1.]]
+                   [np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),
+                    np.sqrt(3.),np.sqrt(3.)],
+                   [np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
+                    np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
+                    np.sqrt(15.),np.sqrt(15.)]]
 
 # how to convert from spherical to cartesian basis functions (in columubs ordering)
 # s -> s | px -> px | py -> py | pz -> pz 
 # d ordering: d2-, d1-, d0, d1+ ,d2+
-# dxx ->  d2+ - d0
+# dxx ->  -d0 + d2+
 # dxy ->  d2-
 # dxz ->  d1+
-# dyy -> -d2+ - d0
+# dyy -> -d0 - d2+
 # dyz ->  d1-
 # dzz -> 2. * d0
 # f ordering: f3-, f2-, f1-, f0, f1+, f2+, f3+
@@ -53,12 +47,22 @@ ao_norm         = [[1.],
 sph2cart        = [
                    [ [[0],[1.]] ],                                     # conversion for s orbitals
                    [ [[0],[1.]], [[1],[1.]], [[2],[1.]] ],             # conversion for p orbitals
-                   [ [[2,4],[-1.,1]], [[0],[1.]], [[3],[1.]],          # conversion for d orbitals
-                     [[2,4],[-1., 1.]], [[1],[1.]], [[2],[2.]] ],
-                   [ [[4,6],[-1.,-1./15.]], [[0,2],[np.sqrt(2.),-1.]], # conversion for f orbitals
-                     [[3,5],[1.,1.]], [[4,6],[-1.,1.]], [[1],[1.]], 
-                     [[4],[4.]], [[0,2],[-np.sqrt(2.),-1.]], 
-                     [[3,5],[1.,-1.]], [[2],[4.]], [[3], [-2./3.]] ]
+                   [ [[2,4],[-1.,1]], 
+                     [[0],[1.]], 
+                     [[3],[1.]],          # conversion for d orbitals
+                     [[2,4],[-1.,-1.]], 
+                     [[1],[1.]], 
+                     [[2],[2.]] ],
+                   [ [[4,6],[-1.,-1./15.]], 
+                     [[0,2],[np.sqrt(2.),-1.]], # conversion for f orbitals
+                     [[3,5],[1.,1.]], 
+                     [[4,6],[-1.,1.]], 
+                     [[1],[1.]], 
+                     [[4],[4.]], 
+                     [[0,2],[-np.sqrt(2.),-1.]], 
+                     [[3,5],[1.,-1.]],
+                     [[2],[4.]], 
+                     [[3], [-2./3.]] ]
                   ] 
 
 def parse(geom_file, basis_file, mo_file):
@@ -90,7 +94,7 @@ def read_geom(geom_file):
     for i in range(len(gfile)):
         gstr   = gfile[i].split() # format = asym, anum, coords
         asym   = gstr[0].upper().rjust(2)
-        coords = [float(gstr[i]) for i in range(2,5)]
+        coords = [float(gstr[i])*moinfo.au2ang for i in range(2,5)]
         atom_i = moinfo.atom(asym,coords)
         geom.add_atom(atom_i) 
 
@@ -216,49 +220,47 @@ def read_mos(mocoef_file, in_cart, basis):
             # make a note of where they are
             ang_mom_ao.extend([ang_mom for i in range(nfunc_nascent[ang_mom])])
             nfunc   = moinfo.nfunc_cart[ang_mom]            
-            map_arr = [moinfo.ao_ordr[ang_mom].index(ao_ordr[ang_mom][k]) for k in range(nfunc)]
-            dalt_gam_map.extend([nf_cnt + map_arr[k] for k in range(len(map_arr))])
-            scale_col.extend([1./ao_norm[ang_mom][k] for k in range(nfunc)])
-            scale_gam.extend([moinfo.ao_norm[ang_mom][k] for k in range(nfunc)])
+            map_arr = [nf_cnt + ao_ordr[ang_mom].index(moinfo.ao_ordr[ang_mom][k]) 
+                       for k in range(nfunc)]
+            dalt_gam_map.extend(map_arr)
+            scale_col.extend([ao_norm[ang_mom][k] for k in range(nfunc)])
+            scale_gam.extend([1./moinfo.ao_norm[ang_mom][k] for k in range(nfunc)])
             nf_cnt += nfunc
-
-    print("ang_mom_ao="+str(ang_mom_ao)+"\n")
-    print("dalt_gam_map="+str(dalt_gam_map)+"\n")
-    print("col_scale="+str(scale_col)+"\n")
-    print("scale_gam="+str(scale_gam)+"\n")
 
     # if in spherically adapted orbitals, first convert
     # to cartesians
     if not in_cart:
         orb_trans = [[] for i in range(nmo)]
-        ang_mom_max = max(ang_mom_index)
-        i = 0
-        while(i<nao):
+        ang_mom_max = max(ang_mom_ao)
+        iao = 0
+        iao_cart = 0
+        while(iao<nao):
             # only an issue for l>=2 
-            if ang_mom_ao[i]>=2:
-                lval = ang_mom_ao[i]
+            if ang_mom_ao[iao]>=2:
+                lval = ang_mom_ao[iao]
                 for imo in range(nmo):
-                    cart_orb = [col_orb[i+sp2cart[lval,j,1],imo]*sph2cart[lval,j,2] for j in range(moinfo.nfunc_cart[lval])]
-                    orb_trans[i].extend([ao for orb in cart_orb for ao in orb])
-                i += nfunc_nascent[lval]
+                    cart_orb = [sum([col_orb[iao+
+                                sph2cart[lval][j][0][k],imo]*sph2cart[lval][j][1][k] 
+                                for k in range(len(sph2cart[lval][j][0]))])
+                                for j in range(moinfo.nfunc_cart[lval])]
+                    orb_trans[imo].extend(cart_orb)
+                iao      += nfunc_nascent[lval]
+                iao_cart += moinfo.nfunc_cart[lval] 
             else:
                 for imo in range(nmo):
-                    orb_trans[i].extend([col_orb[i,imo]])
-                i += 1
+                    orb_trans[imo].extend([col_orb[iao,imo]])
+                iao      += 1
+                iao_cart += 1
 
-        col_orb_cart = np.array(orb_trans)
-        nao_cart     = col_orb_cart.shape[0]
+        col_orb_cart = np.array(orb_trans).T
+        nao_cart     = iao_cart
     else:
         col_orb_cart = col_orb
         nao_cart     = nao 
-        
+      
     # copy orbitals into gam_orb 
     gam_orb = moinfo.orbitals(nao_cart, nmo)
     gam_orb.mo_vectors = col_orb_cart
-
-    ovrlp = np.array([[np.dot(gam_orb.mo_vectors[:,i],gam_orb.mo_vectors[:,j]) for i in range(nmo)] for j in range(nmo)])
-    print('ovrlp='+str(ovrlp))
-
 
     # remove the dalton normalization factors
     gam_orb.scale(scale_col)

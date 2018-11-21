@@ -27,16 +27,13 @@ ao_ordr         = [['s'],
                    ['fxxx','fyyy','fzzz','fxxy','fxxz',
                     'fxyy','fyyz','fxzz','fyzz','fxyz']]
 
-#ao_norm         = [[1.],
-#                   [1.,1.,1.],
-#                   [1.,1.,1.,1./np.sqrt(3.),1./np.sqrt(3.),1./np.sqrt(3.)],
-#                   [1.,1.,1.,1./np.sqrt(5.),1./np.sqrt(5.),1./np.sqrt(5.),
-#                             1./np.sqrt(5.),1./np.sqrt(5.),1./np.sqrt(5.),1./np.sqrt(15.)]]
-
 ao_norm         = [[1.],
                    [1.,1.,1.],
-                   [1.,1.,1.,1.,1.,1.],
-                   [1.,1.,1.,1.,1.,1.,1.,1.,1.,1.]]
+                   [1.,1.,1.,np.sqrt(3.),np.sqrt(3.),np.sqrt(3.)],
+                   [1.,1.,1.,np.sqrt(5.),np.sqrt(5.),np.sqrt(5.),
+                             np.sqrt(5.),np.sqrt(5.),np.sqrt(5.),np.sqrt(15.)]]
+
+au2ang          = 0.529177249
   
 # wrapper for all requisite data about an atom
 class atom:
@@ -69,7 +66,7 @@ class atom:
     # print the atom in GAMESS file format
     def print_atom(self, file_handle):
         """Documentation to come"""
-        ofmt   = ('{:2s}'+'{:>13s}'+
+        ofmt   = ('{:2s}'+'{:>5s}'+
                   ''.join('{:18.10f}' for i in range(3))+'\n')
         w_data = [self.symbol,self.number] + self.coords
         file_handle.write(ofmt.format(*w_data))
@@ -167,13 +164,17 @@ class orbitals:
     # scale each MO by the vector fac_vec
     def scale(self, fac_vec):
         """scale each MO by the vector fac_vec"""
-        self.mo_vectors = (self.mo_vectors.T * np.array(fac_vec)).T
+        scale_fac       = np.array(fac_vec)
+        old_mos         = self.mo_vectors.T
+        new_mos         = np.array([mo * scale_fac for mo in old_mos]).T
+        self.mo_vectors = new_mos
 
     # re-sort mos according to a map array
     def sort(self, map_lst):
         """re-sort the MOs, ordering the AO indices via map_lst"""
         for i in range(self.nmos):
-            self.mo_vectors[:,i] = self.mo_vectors[map_lst,i]
+            vec_srt = self.mo_vectors[map_lst,i]
+            self.mo_vectors[:,i] = vec_srt 
         return
 
     # take the norm of an orbital
