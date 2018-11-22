@@ -106,9 +106,6 @@ def read_basis(basis_file, geom):
     # create basis set object
     basis = moinfo.basis_set('unknown',geom)
 
-    # initialize the ordering array
-    dalt_gam_map = [[] for i in range(geom.natoms())]
-
     # slurp up daltaoin file
     with open(basis_file) as daltaoin:
         bfile = daltaoin.readlines()

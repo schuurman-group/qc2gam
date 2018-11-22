@@ -91,7 +91,7 @@ def read_geom(geom_file):
         gfile = turbo_coord.readlines()
 
     i = 0
-    while(gfile[i].split()[0] != "$coord")
+    while(gfile[i].split()[0] != "$coord"):
         i+=1
    
     atoms = []
@@ -111,9 +111,6 @@ def read_basis(basis_file, geom):
     # create basis set object
     basis = moinfo.basis_set('unknown',geom)
 
-    # initialize the ordering array
-    turbo_gam_map = [[] for i in range(geom.natoms())]
-
     # slurp up daltaoin file
     with open(basis_file) as turbo_basis:
         bfile = turbo_basis.readlines()
@@ -123,43 +120,56 @@ def read_basis(basis_file, geom):
     # that at the moment)
     in_cartesians = False
 
-    # iterate over the number of groups
+    # look for start of basis section 
     i = 0
-    atm_cnt = 0
-    for j in range(n_grp):
+    while(bfile[i].split()[0] != "$basis"):
         i += 1
-        [n_atm,n_shl]         = list(map(int,bfile[i].split()[1:3]))
-        n_per_shell           = list(map(int,bfile[i].split()[3:]))
- 
-        # for time being assume C1, so number of atoms in
-        # daltaoin file == number of atoms in geom file
-        for k in range(n_atm):
-          i+=1
-          [a_sym, a_index, x, y, z, sym] = bfile[i].split()
-          if a_sym.upper().rjust(2) != geom.atoms[atm_cnt+k].symbol:
-              sys.exit('Mismatch between daltaoin and geom file, atom='+str(atm_cnt+k))
 
-        # loop over the number of angular momentum shells
-        ang_mom = -1
-        for k in range(n_shl):
-            ang_mom += 1
-            for l in range(n_per_shell[k]):
-                i+=1 
-                [n_prim, n_con] = list(map(int,bfile[i].split()[1:]))
-                b_funcs = [moinfo.basis_function(ang_mom) for m in range(n_con)]
-                for m in range(n_prim):
-                    i+=1
-                    exp_con = list(map(float,bfile[i].split()))
-                    expon = exp_con[0]
-                    coefs = exp_con[1:]
-                    for n in range(n_con):
-                        b_funcs[n].add_primitive(expon, coefs[n])
-                for m in range(n_atm):
-                    for n in range(n_con):
-                        basis.add_function(atm_cnt+m, b_funcs[n])
-                   
-        # increment atom counter
-        atm_cnt += n_atm
+    # iterate over the atom types
+    b_set     = ""
+    a_sym     = ""
+    sec_start = False
+    while(bfile[i].split()[0] != "$end"):
+        line = bfile[i].split()
+ 
+        # ignore blank lines
+        if len(line) == 0:
+            i += 1
+            continue
+
+        # ignore comment lines
+        if line[0][0] == "#":
+            i += 1
+            continue
+
+        # if first string is star, either
+        # beginning or ending basis section
+        if line[0] == "*":
+            sec_start = not sec_start
+            i += 1
+            continue
+
+        # if starting section, first line 
+        # is atom and basis set line
+        if sec_start:
+            a_sym = line[0]
+            b_set = line[1]
+            a_lst = [ind for ind,sym in enumerate([geom.atoms[k].label 
+                       for k in range(geom.natoms())]) 
+                       if sym == a_sym.upper().rjust(2)]
+            i += 1
+            continue
+
+        # if we get this far, we're parsing the basis set!
+        [nprim, ang_sym] = bfile[i].split()
+        ang_mom          = moinfo.ang_mom_sym.index(ang_sym.upper())
+        bfunc            = moinfo.basis_function(ang_mom)
+        for j in range(nprim):
+            i += 1
+            [exp, coef]  = bfile[i].split()
+            bfunc.add_primitive(float(exp), float(coef))
+        for atom in a_list:
+            basis.add_function(atom, bfunc) 
 
     return [in_cartesians, basis]
 
@@ -175,32 +185,64 @@ def read_mos(mocoef_file, in_cart, basis):
     with open(mocoef_file) as mos:
         mo_file = mos.readlines()
 
-    # move to the first line of the orbital coefficients, reading nao and nmo
-    # along the way
-    line_index = 0
-    while(mo_file[line_index].split()[0][0] != '('):
-        line_index += 1
-        # figure out nao, nmo
-        if mo_file[line_index].split()[0] == "A":
-            [nao, nmo] = list(map(int,mo_file[line_index-1].split()))
+    i   = 0
+    wid = 20
+    n_aos    = []
+    raw_orbs = []
+    new_orb = False
+    while i<len(mo_file):
 
-    # create a numpy array to hold orbitals
-    col_orb = np.zeros((nao,nmo),dtype=float)
-    for i in range(nmo):
-        n_remain = nao
-        row      = 0
-        while(n_remain > 0):
-            line_index += 1
-            line_arr    = mo_file[line_index].split()
-            col_orb[3*row:3*row+min(n_remain,3),i] = np.array(
-               [line_arr[k].replace("D","e") for k in range(len(line_arr))],dtype=float)             
-            n_remain -= min(n_remain,3)
-            row += 1
+        # ignore the first line
+        if bfile[i].split[0] == "$scfmo":
+            i += 1
+            continue
+
+        # if comment line, then ignore
+        if bfile[i].split()[0] == '#':
+            i += 1
+            continue
+    
+        # if line contains "eigenvalue", start new orbitals   
+        if 'eigenvalue' in mo_file[i].lower():
+            raw_orbs.extend([])
+            line = mo_file[i].split()
+            i += 1
+            n_aos.extend([0])
+            new_orb = True
+            continue
+ 
+        # else, parse a line
+        line = mo_file[i].strip()
+        n_cf = int(len(line)/wid)
+        for i in range(n_cf):
+            n_aos[-1] += 1  
+            raw_orbs[-1].extend([float(line[i*wid:(i+1)*wid])])
+
+    # make sure all the mos are the same length
+    uniq = list(Set(n_aos))
+    if len(uniq) != 1:
+        sys.exit('MOs have different numbers of AOs. Exiting...')
+    
+    # determine if we using cartesian or spherical functions
+    n_cart = 0
+    n_sph  = 0
+    for atom_i in range(basis.geom.natoms()):
+        for bf_i in basis.basis_funcs[atom_i]:
+            n_cart += moinfo.nfunc_cart[bf_i.ang_mom]
+            n_sph  += moinfo.nfunc_sph[bf_i.ang_mom]
+
+    if uniq[0] == n_cart:
+        in_cart = True
+    elif uniq[0] == n_sph:
+        in_cart = False
+    else:
+        sys.exit('Number of basis functions is not equal to: '+str(uniq[0]))
 
     # make the map array
-    nf_cnt = 0
-    dalt_gam_map = []
-    scale_col     = []
+    turb_orb      = np.array(raw_orbs)
+    nf_cnt        = 0
+    turb_gam_map  = []
+    scale_turb    = []
     scale_gam     = []
 
     if not in_cart:
@@ -218,8 +260,8 @@ def read_mos(mocoef_file, in_cart, basis):
             nfunc   = moinfo.nfunc_cart[ang_mom]            
             map_arr = [nf_cnt + ao_ordr[ang_mom].index(moinfo.ao_ordr[ang_mom][k]) 
                        for k in range(nfunc)]
-            dalt_gam_map.extend(map_arr)
-            scale_col.extend([ao_norm[ang_mom][k] for k in range(nfunc)])
+            turb_gam_map.extend(map_arr)
+            scale_turb.extend([ao_norm[ang_mom][k] for k in range(nfunc)])
             scale_gam.extend([1./moinfo.ao_norm[ang_mom][k] for k in range(nfunc)])
             nf_cnt += nfunc
 
@@ -235,7 +277,7 @@ def read_mos(mocoef_file, in_cart, basis):
             if ang_mom_ao[iao]>=2:
                 lval = ang_mom_ao[iao]
                 for imo in range(nmo):
-                    cart_orb = [sum([col_orb[iao+
+                    cart_orb = [sum([turb_orb[iao+
                                 sph2cart[lval][j][0][k],imo]*sph2cart[lval][j][1][k] 
                                 for k in range(len(sph2cart[lval][j][0]))])
                                 for j in range(moinfo.nfunc_cart[lval])]
@@ -244,25 +286,25 @@ def read_mos(mocoef_file, in_cart, basis):
                 iao_cart += moinfo.nfunc_cart[lval] 
             else:
                 for imo in range(nmo):
-                    orb_trans[imo].extend([col_orb[iao,imo]])
+                    orb_trans[imo].extend([turb_orb[iao,imo]])
                 iao      += 1
                 iao_cart += 1
 
-        col_orb_cart = np.array(orb_trans).T
-        nao_cart     = iao_cart
+        turb_orb_cart = np.array(orb_trans).T
+        nao_cart      = iao_cart
     else:
-        col_orb_cart = col_orb
-        nao_cart     = nao 
+        turb_orb_cart = turb_orb
+        nao_cart      = nao 
       
     # copy orbitals into gam_orb 
     gam_orb = moinfo.orbitals(nao_cart, nmo)
-    gam_orb.mo_vectors = col_orb_cart
+    gam_orb.mo_vectors = turb_orb_cart
 
     # remove the dalton normalization factors
-    gam_orb.scale(scale_col)
+    gam_orb.scale(scale_turb)
   
     # re-sort orbitals to GAMESS ordering
-    gam_orb.sort(dalt_gam_map)
+    gam_orb.sort(turb_gam_map)
 
     # apply the GAMESS normalization factors
     gam_orb.scale(scale_gam)

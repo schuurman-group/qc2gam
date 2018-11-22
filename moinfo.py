@@ -266,9 +266,20 @@ class basis_set:
         # list of basis function objects
         self.basis_funcs = [[] for i in range(self.geom.natoms())]
 
-    # add a basis function to the basis_set
+    # add a basis function to the basis_set -- always keeps "like" angular 
+    # momentum functions together
     def add_function(self, atom_i, bf):
-        self.basis_funcs[atom_i].extend([bf])
+        ang_mom = bf.ang_mom
+        if len(self.basis_funcs[atom_i])>0:
+            bf_i = 0
+            while(ang_mom <= self.basis_funcs[atom_i][bf_i].ang_mom):
+                bf_i += 1
+                if bf_i == len(self.basis_funcs[atom_i]):
+                    break
+        else:
+            bf_i = len(self.basis_funcs[atom_i]):
+
+        self.basis_funcs[atom_i].insert(bf_i, bf)
         self.n_cont[atom_i] += 1
         self.n_func         += nfunc_cart[bf.ang_mom]
         return
