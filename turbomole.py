@@ -129,9 +129,14 @@ def read_basis(basis_file, geom):
     b_set     = ""
     a_sym     = ""
     sec_start = False
-    while(bfile[i].split()[0] != "$end"):
+    i         += 1
+    while True:
         line = bfile[i].split()
- 
+
+        # stepping on $end line breaks us out of parser
+        if line[0] == "$end":
+            break
+
         # ignore blank lines
         if len(line) == 0:
             i += 1
@@ -154,22 +159,23 @@ def read_basis(basis_file, geom):
         if sec_start:
             a_sym = line[0]
             b_set = line[1]
-            a_lst = [ind for ind,sym in enumerate([geom.atoms[k].label 
+            a_lst = [ind for ind,sym in enumerate([geom.atoms[k].symbol 
                        for k in range(geom.natoms())]) 
                        if sym == a_sym.upper().rjust(2)]
             i += 1
             continue
 
         # if we get this far, we're parsing the basis set!
-        [nprim, ang_sym] = bfile[i].split()
+        [nprim, ang_sym] = line
         ang_mom          = moinfo.ang_mom_sym.index(ang_sym.upper())
         bfunc            = moinfo.basis_function(ang_mom)
-        for j in range(nprim):
+        for j in range(int(nprim)):
             i += 1
             [exp, coef]  = bfile[i].split()
             bfunc.add_primitive(float(exp), float(coef))
-        for atom in a_list:
+        for atom in a_lst:
             basis.add_function(atom, bfunc) 
+        i += 1
 
     return [in_cartesians, basis]
 
@@ -185,44 +191,50 @@ def read_mos(mocoef_file, in_cart, basis):
     with open(mocoef_file) as mos:
         mo_file = mos.readlines()
 
-    i   = 0
-    wid = 20
-    n_aos    = []
+    i        = 0
+    wid      = 20
+    n_mos    = 0
+    n_ao_all = []
     raw_orbs = []
     new_orb = False
     while i<len(mo_file):
+        line = mo_file[i].split()
 
         # ignore the first line
-        if bfile[i].split[0] == "$scfmo":
+        if line[0] == "$scfmo" or line[0] == "$end":
             i += 1
             continue
 
         # if comment line, then ignore
-        if bfile[i].split()[0] == '#':
+        if line[0] == '#':
             i += 1
             continue
     
         # if line contains "eigenvalue", start new orbitals   
-        if 'eigenvalue' in mo_file[i].lower():
-            raw_orbs.extend([])
-            line = mo_file[i].split()
-            i += 1
-            n_aos.extend([0])
+        if 'eigenvalue' in ' '.join(line).lower():
+            raw_orbs.append([])
+            n_ao_all.extend([0])
+            n_mos   += 1
             new_orb = True
+            i       += 1
             continue
  
         # else, parse a line
-        line = mo_file[i].strip()
-        n_cf = int(len(line)/wid)
-        for i in range(n_cf):
-            n_aos[-1] += 1  
-            raw_orbs[-1].extend([float(line[i*wid:(i+1)*wid])])
+        mo_row = line[0].lower().replace('d','e') 
+        n_cf = int(len(mo_row)/wid)
+        for j in range(n_cf):
+            n_ao_all[-1] += 1  
+            raw_orbs[-1].extend([float(mo_row[j*wid:(j+1)*wid])])
+        i += 1
+
 
     # make sure all the mos are the same length
-    uniq = list(Set(n_aos))
+    uniq = list(set(n_ao_all))
     if len(uniq) != 1:
         sys.exit('MOs have different numbers of AOs. Exiting...')
-    
+    else:
+        n_aos = uniq[0]    
+
     # determine if we using cartesian or spherical functions
     n_cart = 0
     n_sph  = 0
@@ -231,15 +243,15 @@ def read_mos(mocoef_file, in_cart, basis):
             n_cart += moinfo.nfunc_cart[bf_i.ang_mom]
             n_sph  += moinfo.nfunc_sph[bf_i.ang_mom]
 
-    if uniq[0] == n_cart:
+    if n_aos == n_cart:
         in_cart = True
-    elif uniq[0] == n_sph:
+    elif n_aos == n_sph:
         in_cart = False
     else:
         sys.exit('Number of basis functions is not equal to: '+str(uniq[0]))
 
     # make the map array
-    turb_orb      = np.array(raw_orbs)
+    turb_orb      = np.array(raw_orbs).T
     nf_cnt        = 0
     turb_gam_map  = []
     scale_turb    = []
@@ -268,15 +280,15 @@ def read_mos(mocoef_file, in_cart, basis):
     # if in spherically adapted orbitals, first convert
     # to cartesians
     if not in_cart:
-        orb_trans = [[] for i in range(nmo)]
+        orb_trans = [[] for i in range(n_mos)]
         ang_mom_max = max(ang_mom_ao)
         iao = 0
         iao_cart = 0
-        while(iao<nao):
+        while(iao<n_aos):
             # only an issue for l>=2 
             if ang_mom_ao[iao]>=2:
                 lval = ang_mom_ao[iao]
-                for imo in range(nmo):
+                for imo in range(n_mos):
                     cart_orb = [sum([turb_orb[iao+
                                 sph2cart[lval][j][0][k],imo]*sph2cart[lval][j][1][k] 
                                 for k in range(len(sph2cart[lval][j][0]))])
@@ -285,7 +297,7 @@ def read_mos(mocoef_file, in_cart, basis):
                 iao      += nfunc_nascent[lval]
                 iao_cart += moinfo.nfunc_cart[lval] 
             else:
-                for imo in range(nmo):
+                for imo in range(n_mos):
                     orb_trans[imo].extend([turb_orb[iao,imo]])
                 iao      += 1
                 iao_cart += 1
@@ -294,10 +306,10 @@ def read_mos(mocoef_file, in_cart, basis):
         nao_cart      = iao_cart
     else:
         turb_orb_cart = turb_orb
-        nao_cart      = nao 
-      
+        nao_cart      = n_aos 
+
     # copy orbitals into gam_orb 
-    gam_orb = moinfo.orbitals(nao_cart, nmo)
+    gam_orb = moinfo.orbitals(nao_cart, n_mos)
     gam_orb.mo_vectors = turb_orb_cart
 
     # remove the dalton normalization factors

@@ -137,7 +137,7 @@ class orbitals:
         self.mo_vectors[:,i] = mo_vec
         return
 
-    # insert an orbital
+   # insert an orbital
     def insert(self, mo_vec, mo_i):
         """Documentation to come"""
         self.mo_vectors = np.insert(self.mo_vectors,mo_i,mo_vec,axis=1)
@@ -192,27 +192,28 @@ class orbitals:
 
         # open file_name, append if file already exists
         with open(file_name, 'a') as mo_file:
-            mo_file.write('$VEC\n')
+            mo_file.write(' $VEC\n')
             for i in range(n_orb):
                 self.print_movec(mo_file, i)
-            mo_file.write('$END\n')
+            mo_file.write(' $END\n')
 
         return
 
     # print an orbital vector
     def print_movec(self, file_handle, mo_i):
         """Documentation to come"""
-        n_col = 5 # this is set by GAMESS format
-        n_row = int(math.ceil(self.naos/n_col))
-
-        mo_row = ('{:>2d}'+' '+'{:>2d}'+''.join('{:15.8E}' for i in range(n_col))+'\n')
+        n_col  = 5 # this is set by GAMESS format
+        n_row  = int(math.ceil(self.naos/n_col))
         mo_lab = (mo_i+1) % 100
+ 
+        def mo_row(n):
+            return ('{:>2d}'+' '+'{:>2d}'+''.join('{:15.8E}' for i in range(n))+'\n')
 
         for i in range(n_row):
             r_data = [mo_lab, i+1]
-            r_data.extend(self.mo_vectors[5*i:5*(i+1),mo_i].tolist())
-            file_handle.write(mo_row.format(*r_data))
-
+            n_coef  = min(self.naos,5*(i+1)) - 5*i
+            r_data.extend(self.mo_vectors[5*i:min(self.naos,5*(i+1)),mo_i].tolist())
+            file_handle.write(mo_row(n_coef).format(*r_data))
         return
 
 # an object to hold information about a single basis function
@@ -272,12 +273,12 @@ class basis_set:
         ang_mom = bf.ang_mom
         if len(self.basis_funcs[atom_i])>0:
             bf_i = 0
-            while(ang_mom <= self.basis_funcs[atom_i][bf_i].ang_mom):
+            while(ang_mom >= self.basis_funcs[atom_i][bf_i].ang_mom):
                 bf_i += 1
                 if bf_i == len(self.basis_funcs[atom_i]):
                     break
         else:
-            bf_i = len(self.basis_funcs[atom_i]):
+            bf_i = len(self.basis_funcs[atom_i])
 
         self.basis_funcs[atom_i].insert(bf_i, bf)
         self.n_cont[atom_i] += 1
@@ -289,8 +290,9 @@ class basis_set:
     
         # if file doesn't exist, create it. Overwrite if it does exist
         with open(file_name, 'x') as dat_file:
-            dat_file.write('$DATA\n'+
-                           'Comment line | basis='+str(self.label)+'\n')
+            dat_file.write(' $DATA\n'+
+                           'Comment line | basis='+str(self.label)+'\n'+
+                           'C1'+'\n')
 
             for i in range(self.geom.natoms()):
                 self.geom.atoms[i].print_atom(dat_file)
@@ -299,7 +301,7 @@ class basis_set:
                 # each atomic record ends with an empty line
                 dat_file.write('\n')
 
-            dat_file.write('$END\n')
+            dat_file.write(' $END\n')
 
         return
 
