@@ -198,59 +198,14 @@ def read_mos(mocoef_file, in_cart, basis):
             n_remain -= min(n_remain,3)
             row += 1
 
-    # make the map array
-    nf_cnt = 0
-    dalt_gam_map = []
-    scale_col     = []
-    scale_gam     = []
-
-    if not in_cart:
-        nfunc_nascent = moinfo.nfunc_sph
-    else:
-        nfunc_nascent = moinfo.nfunc_cart
-    ang_mom_ao = []
-
-    for i in range(basis.geom.natoms()):
-        for j in range(len(basis.basis_funcs[i])):
-            ang_mom = basis.basis_funcs[i][j].ang_mom
-            # if we have to eventually unroll these spherically adapted functions
-            # make a note of where they are
-            ang_mom_ao.extend([ang_mom for i in range(nfunc_nascent[ang_mom])])
-            nfunc   = moinfo.nfunc_cart[ang_mom]            
-            map_arr = [nf_cnt + ao_ordr[ang_mom].index(moinfo.ao_ordr[ang_mom][k]) 
-                       for k in range(nfunc)]
-            dalt_gam_map.extend(map_arr)
-            scale_col.extend([ao_norm[ang_mom][k] for k in range(nfunc)])
-            scale_gam.extend([1./moinfo.ao_norm[ang_mom][k] for k in range(nfunc)])
-            nf_cnt += nfunc
+    # construct mapping array from COLUMBUS to GAMESS
+    [dalt_gam_map, scale_col, scale_gam] = basis.construct_map(ao_ordr, ao_norm)
 
     # if in spherically adapted orbitals, first convert
     # to cartesians
     if not in_cart:
-        orb_trans = [[] for i in range(nmo)]
-        ang_mom_max = max(ang_mom_ao)
-        iao = 0
-        iao_cart = 0
-        while(iao<nao):
-            # only an issue for l>=2 
-            if ang_mom_ao[iao]>=2:
-                lval = ang_mom_ao[iao]
-                for imo in range(nmo):
-                    cart_orb = [sum([col_orb[iao+
-                                sph2cart[lval][j][0][k],imo]*sph2cart[lval][j][1][k] 
-                                for k in range(len(sph2cart[lval][j][0]))])
-                                for j in range(moinfo.nfunc_cart[lval])]
-                    orb_trans[imo].extend(cart_orb)
-                iao      += nfunc_nascent[lval]
-                iao_cart += moinfo.nfunc_cart[lval] 
-            else:
-                for imo in range(nmo):
-                    orb_trans[imo].extend([col_orb[iao,imo]])
-                iao      += 1
-                iao_cart += 1
-
-        col_orb_cart = np.array(orb_trans).T
-        nao_cart     = iao_cart
+        col_orb_cart = moinfo.sph2cart(basis, col_orb, sph2cart)
+        nao_cart     = col_orb_cart.shape[0]
     else:
         col_orb_cart = col_orb
         nao_cart     = nao 

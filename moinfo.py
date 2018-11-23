@@ -34,7 +34,42 @@ ao_norm         = [[1.],
                              np.sqrt(5.),np.sqrt(5.),np.sqrt(5.),np.sqrt(15.)]]
 
 au2ang          = 0.529177249
-  
+
+
+# converts orbitals from spherical to cartesian
+# AO basis
+def sph2cart(basis, mo_sph, s2c):
+    """Converts orbitals from spherical to cartesian AO basis. Assumes
+       input orbitals are numpy array"""
+
+    (nao_sph, nmo) = mo_sph.shape
+    [l_cart, l_sph] = basis.ang_mom_lst()
+
+    orb_trans = [[] for i in range(nmo)]
+    iao_sph   = 0
+    iao_cart  = 0
+    while(iao_sph < nao_sph):
+        # only an issue for l>=2 
+        if l_sph[iao_sph]>=2:
+            lval = l_sph[iao_sph]
+            for imo in range(nmo):
+                cart_orb = [sum([mo_sph[iao_sph+
+                            s2c[lval][j][0][k],imo]*s2c[lval][j][1][k]
+                            for k in range(len(s2c[lval][j][0]))])
+                            for j in range(nfunc_cart[lval])]
+                orb_trans[imo].extend(cart_orb)
+            iao_sph  += nfunc_sph[lval]
+            iao_cart += nfunc_cart[lval]
+        else:
+            for imo in range(nmo):
+                orb_trans[imo].extend([mo_sph[iao_sph,imo]])
+            iao_sph  += 1
+            iao_cart += 1
+
+    mo_cart      = np.array(orb_trans).T
+
+    return mo_cart
+
 # wrapper for all requisite data about an atom
 class atom:
     """Documentation to come"""
@@ -111,16 +146,6 @@ class orbitals:
         # matrix holding MOs
         self.mo_vectors = np.zeros((n_aos,n_mos),dtype=float)
 
-    # swap two orbitals
-    def swap(self, mo_i, mo_j):
-        """Documentation to come"""
-
-        if max(mo_i,mo_j) <= self.mo_vectors.shape[1]:
-            mo_tmp = self.mo_vectors[:,mo_i]
-            self.mo_vectors[:,mo_i] = self.mo_vectors[:,mo_j]
-            self.mo_vectors[:,mo_j] = mo_tmp 
-        return
-
     # add an orbital to the end of the list (i.e. at first column with norm==0
     def add(self, mo_vec):
         """Documentation to come"""
@@ -149,18 +174,6 @@ class orbitals:
         self.mo_vectors = np.delete(self.mo_vectors,mo_i,axis=1)
         return
 
-    # scale entire MO by a scalar
-    def scale_mo(self, mo_i, fac):
-        """Documentation to come"""
-        self.mo_vectors[:,mo_i] *= fac
-        return
-
-    # scale each element of MO vector by a specific value
-    def scale_mo_vec(self, mo_i, fac_vec):
-        """Documentation to come"""
-        self.mo_vectors[:,mo_i] *= fac_vec
-        return
-   
     # scale each MO by the vector fac_vec
     def scale(self, fac_vec):
         """scale each MO by the vector fac_vec"""
@@ -263,9 +276,26 @@ class basis_set:
         # total number of functions
         self.n_func      = 0
         # total number of contractions for atom i
-        self.n_cont      = [0 for i in range(self.geom.natoms())]       
+        self.n_bf        = [0 for i in range(self.geom.natoms())]       
         # list of basis function objects
         self.basis_funcs = [[] for i in range(self.geom.natoms())]
+
+    # construct an array of the ang_mom of each basis function in 
+    # GAMESS ordering -- returns both cartesian array and spherically
+    # adapted array
+    def ang_mom_lst(self):
+        """Returns an array containing the value of angular momentum of the 
+           corresponding at that index"""
+        ang_mom_cart = []
+        ang_mom_sph  = []
+
+        for i in range(self.geom.natoms()):
+            for j in range(self.n_bf[i]):
+                ang_mom = self.basis_funcs[i][j].ang_mom
+                ang_mom_cart.extend([ang_mom for k in range(nfunc_cart[ang_mom])])
+                ang_mom_sph.extend([ang_mom for k in range(nfunc_sph[ang_mom])])
+
+        return[ang_mom_cart, ang_mom_sph]
 
     # add a basis function to the basis_set -- always keeps "like" angular 
     # momentum functions together
@@ -281,9 +311,38 @@ class basis_set:
             bf_i = len(self.basis_funcs[atom_i])
 
         self.basis_funcs[atom_i].insert(bf_i, bf)
-        self.n_cont[atom_i] += 1
+        self.n_bf[atom_i]   += 1
         self.n_func         += nfunc_cart[bf.ang_mom]
         return
+
+    # construct a mapping between the ordering of basis functions
+    # in an arbitrary order and the 'canonical' GAMESS order
+    # mapping also assumes 'canonical' cartesian representation
+    # of AOs
+    def construct_map(self, orig_ordr, orig_norm):
+        """constructs a map array to convert the nascent AO ordering to
+           GAMESS AO ordering. Also returns the normalization factors
+           for the nascent and corresponding GAMESS-ordered AO basis"""
+        map_arr       = []
+        scale_nascent = []
+        scale_gam     = []
+        ao_map        = [[orig_ordr[i].index(ao_ordr[i][j]) 
+                         for j in range(nfunc_cart[i])] 
+                         for i in range(len(ao_ordr))]
+
+        nf_cnt = 0
+        for i in range(self.geom.natoms()):
+            for j in range(len(self.basis_funcs[i])):
+                ang_mom = self.basis_funcs[i][j].ang_mom
+                nfunc   = nfunc_cart[ang_mom]
+                map_bf = [nf_cnt + ao_map[ang_mom][k] for k in range(nfunc)]
+                map_arr.extend(map_bf)
+                scale_nascent.extend([orig_norm[ang_mom][k] for k in range(nfunc)])
+                scale_gam.extend([1./ao_norm[ang_mom][k] for k in range(nfunc)])
+                nf_cnt += nfunc
+
+        return [map_arr, scale_nascent, scale_gam]
+
 
     # print  the data section of a GAMESS style input file
     def print_basis_set(self, file_name):
@@ -296,7 +355,7 @@ class basis_set:
 
             for i in range(self.geom.natoms()):
                 self.geom.atoms[i].print_atom(dat_file)
-                for j in range(self.n_cont[i]):
+                for j in range(self.n_bf[i]):
                     self.basis_funcs[i][j].print_basis_function(dat_file)       
                 # each atomic record ends with an empty line
                 dat_file.write('\n')
