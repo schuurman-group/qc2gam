@@ -12,23 +12,18 @@ import moinfo
 # s px py pz dxx dxy dxz dyy dyz dzz fxxx fxxy fxxz fxyy fxyz fxzz fyyy fyyz fyzz fzzz
 ao_ordr         = [['s'],
                    ['px','py','pz'],
-                   ['dxx','dxy','dxz','dyy','dyz','dzz'],
+                   ['dxx','dyy','dzz','dxy','dxz','dyz'],
                    ['fxxx','fxxy','fxxz','fxyy','fxyz',
                     'fxzz','fyyy','fyyz','fyzz','fzzz']]
 
 # dxy dxz dyz
 ao_norm         = [[1.],
                    [1.,1.,1.],
-                   [0.5,np.sqrt(3.),np.sqrt(3.),0.5,np.sqrt(3.),0.5],
+                   [np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),
+                    np.sqrt(3.),np.sqrt(3.),np.sqrt(3.)],
                    [np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
                     np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
                     np.sqrt(15.),np.sqrt(15.)]]
-
-#ao_norm         = [[1.],
-#                   [1.,1.,1.],
-#                   [1./np.sqrt(3.),1.,1.,1./np.sqrt(3.),1.,1./np.sqrt(3.),1.],
-#                   [1.,1.,1.,1.,1.,1.,1.,1.,1.,.1]]
-
 
 
 # how to convert from spherical to cartesian basis functions (in turbomole ordering)
@@ -54,12 +49,12 @@ ao_norm         = [[1.],
 sph2cart        = [
                    [ [[0],[1.]] ],                                     # conversion for s orbitals
                    [ [[0],[1.]], [[1],[1.]], [[2],[1.]] ],             # conversion for p orbitals
-                   [ [[0,4],[-1.,np.sqrt(3.)]], 
+                   [ [[0,4],[-0.5/np.sqrt(3.), 0.5]], 
+                     [[0,4],[-0.5/np.sqrt(3.),-0.5]], 
+                     [[0],[1./np.sqrt(3.)]],
                      [[3],[1.]], 
                      [[1],[1.]],          # conversion for d orbitals
-                     [[0,4],[-1.,-np.sqrt(3.)]], 
-                     [[2],[1.]], 
-                     [[0],[2.]] ],
+                     [[2],[1.]]],
                    [ [[1,5],[-1.,-1./15.]], 
                      [[2,6],[-1., np.sqrt(2.)]], # conversion for f orbitals
                      [[0,1],[1.,1.]], 
