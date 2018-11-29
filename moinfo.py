@@ -47,27 +47,20 @@ def sph2cart(basis, mo_sph, s2c):
 
     orb_trans = [[] for i in range(nmo)]
     iao_sph   = 0
-    iao_cart  = 0
     while(iao_sph < nao_sph):
-        # only an issue for l>=2 
-        if l_sph[iao_sph]>=2:
-            lval = l_sph[iao_sph]
-            for imo in range(nmo):
-                cart_orb = [sum([mo_sph[iao_sph+
-                            s2c[lval][j][0][k],imo]*s2c[lval][j][1][k]
-                            for k in range(len(s2c[lval][j][0]))])
-                            for j in range(nfunc_cart[lval])]
-                orb_trans[imo].extend(cart_orb)
-            iao_sph  += nfunc_sph[lval]
-            iao_cart += nfunc_cart[lval]
-        else:
-            for imo in range(nmo):
-                orb_trans[imo].extend([mo_sph[iao_sph,imo]])
-            iao_sph  += 1
-            iao_cart += 1
+        lval = l_sph[iao_sph]
+        for imo in range(nmo):
+            cart_orb = [sum([mo_sph[iao_sph+
+                        s2c[lval][j][0][k],imo]*s2c[lval][j][1][k]
+                        for k in range(len(s2c[lval][j][0]))])
+                        for j in range(nfunc_cart[lval])]
+            orb_trans[imo].extend(cart_orb)
+        iao_sph  += nfunc_sph[lval]
+
+    if iao_sph != basis.n_bf_sph:
+        sys.exit('Error in sph2cart: '+str(iao_sph)+'!='+str(basis.n_bf_sph))
 
     mo_cart      = np.array(orb_trans).T
-
     return mo_cart
 
 # wrapper for all requisite data about an atom
@@ -273,8 +266,10 @@ class basis_set:
         self.label       = label
         # nuclear coordinates (and coordinates of centers of gaussians
         self.geom        = geom
-        # total number of functions
-        self.n_func      = 0
+        # total number of cartesian functions
+        self.n_bf_cart   = 0
+        # total number of spherical functions
+        self.n_bf_sph    = 0
         # total number of contractions for atom i
         self.n_bf        = [0 for i in range(self.geom.natoms())]       
         # list of basis function objects
@@ -312,7 +307,8 @@ class basis_set:
 
         self.basis_funcs[atom_i].insert(bf_i, bf)
         self.n_bf[atom_i]   += 1
-        self.n_func         += nfunc_cart[bf.ang_mom]
+        self.n_bf_cart      += nfunc_cart[bf.ang_mom]
+        self.n_bf_sph       += nfunc_sph[bf.ang_mom]
         return
 
     # construct a mapping between the ordering of basis functions

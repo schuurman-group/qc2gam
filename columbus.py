@@ -198,9 +198,6 @@ def read_mos(mocoef_file, in_cart, basis):
             n_remain -= min(n_remain,3)
             row += 1
 
-    # construct mapping array from COLUMBUS to GAMESS
-    [dalt_gam_map, scale_col, scale_gam] = basis.construct_map(ao_ordr, ao_norm)
-
     # if in spherically adapted orbitals, first convert
     # to cartesians
     if not in_cart:
@@ -214,6 +211,9 @@ def read_mos(mocoef_file, in_cart, basis):
     gam_orb = moinfo.orbitals(nao_cart, nmo)
     gam_orb.mo_vectors = col_orb_cart
 
+    # construct mapping array from COLUMBUS to GAMESS
+    [dalt_gam_map, scale_col, scale_gam] = basis.construct_map(ao_ordr, ao_norm)
+
     # remove the dalton normalization factors
     gam_orb.scale(scale_col)
   
@@ -225,5 +225,168 @@ def read_mos(mocoef_file, in_cart, basis):
 
     return gam_orb
 
+#
+#
+def generate_csf_list(ci_file):
+    """generate a list of CSFs from a cipcls file"""
 
+    [valid, is_cipc] = is_cipcls(ci_file)
 
+    if not valid:
+        sys.exit('Cannot parse csf list output: not cipcls or mcpcls\n')
+
+    # parse cipcls or mcpcls file
+    [n_occ, n_extl, csf_list] = parse_ci_file(ci_file, is_cipc)
+
+    # print the csf_list to file
+    print_csf_list(n_occ, n_extl, csf_list)
+
+    return
+
+#
+#
+def is_cipcls(in_file):
+    """return true,true if the file to parse is a cipcls file,
+       true,false if mcpcls file, and false,false is file not
+       recognized"""
+
+    ci_str = "PROGRAM:              CIPC"
+    mc_str = "PROGRAM:              MCPC"
+
+    with open(in_file) as ci_file:
+
+        for line in ci_file:
+
+            # if cipcls file, return valid_file=True, cipcls=True 
+            if ci_str in line:
+                return [True, True]
+
+            # if mcpcls file, return valid_file=True, cipcls=False
+            if mc_str in line:
+                return [True, False]
+
+    # if neither cipcls or mcpcls file, file not valid
+    return [False,False]
+
+#
+#
+def parse_ci_file(ci_file, is_cipc):
+    """parse cipcls file, extract csf list and coefficients"""
+
+    csf_list   = []
+    ci_str     = '  ------- -------- ------- - ---- --- ---- --- ------------'
+    mc_str     = '-----  ------------  ------------  ------------'
+    ndocc      = 0
+    nocc       = 0
+    nextl      = 0
+    parse_line = False
+    read_docc  = False
+    istate     = -1
+    with open(ci_file) as cipcls:
+        for line in cipcls:
+
+            # read the number of frozen orbitals (if cipcls)
+            if 'frozen orbital =' in line and is_cipc:
+                l_arr = line.strip().split()
+                ndocc = len(l_arr)-3
+                continue
+
+            # read the number of docc orbitals (if mcpcls)
+            if 'List of doubly occupied orbitals' in line and not is_cipc:
+                read_docc = True
+                continue
+
+            # read in the number of doubly occupied orbitals (for mcpcls)
+            if read_docc:
+                l_arr = line.strip().split()
+                if len(l_arr)==0:
+                    read_docc = False
+                    continue
+                else:
+                    ndocc += len(l_arr)/2
+                    continue
+
+            # about to start reading csf list:
+            if ci_str in line or mc_str in line:
+                istate += 1
+                csf_list.append([])
+                parse_line = True
+                continue
+
+            # read a csf line
+            if parse_line:
+                l_arr = line.strip().split()
+ 
+                # stopping criteria for cipcls
+                if 'csfs were printed' in line:
+                    parse_line = False
+                    continue
+
+                # stopping crieria for mcpcls
+                if len(l_arr) == 0:
+                    parse_line = False
+                    continue
+
+                [n_int, n_ext, csf_vec] = parse_ci_line(is_cipc, ndocc, l_arr)
+                csf_list[istate].append([float(l_arr[1]),csf_vec])
+
+                # total number of external orbitals is set to the csfs with
+                # highest excitation order
+                nextl = max(nextl, n_ext)
+
+    return [n_int, nextl, csf_list]
+
+#
+#
+def print_csf_list(n_occ, n_extl, csf_list):
+    """prints csf list in csf2det format"""
+
+    csf_fmt = ('{:14.10f}'+''.join('{:2d}' for i in range(n_occ))+
+                           ''.join('{:4d}:{:2d}' for i in range(n_extl))+
+                           '\n')
+
+    for state in range(len(csf_list)):
+        dat_file = open('csf'+str(state+1), 'x')
+
+        for csf in csf_list[state]:
+            data = [csf[0]]
+            ext_vec = [0] * (2*n_extl)
+            n_ext = int((len(csf[1]) -  n_occ) / 2)
+
+            for i in range(n_ext):
+                ext_vec[2*i]   = csf[1][n_occ+n_extl+i]
+                ext_vec[2*i+1] = csf[1][n_occ+i]
+
+            data.extend(csf[1][0:n_occ])
+            data.extend(ext_vec)
+            dat_file.write(csf_fmt.format(*data))
+
+        dat_file.close()
+    return
+
+#
+#
+def parse_ci_line(is_cipc, ndocc, l_arr):
+    """parses an occupation array from cipcls or mcpcls"""
+
+    csf_vec = [3] * ndocc
+
+    if is_cipc:
+       nextl   = int((len(l_arr) - 5)/3)
+       str_ind = 4 + 3*nextl
+       nact    = len(l_arr[str_ind])-nextl
+       nintl   = ndocc + nact
+
+       # first add internal orbitals
+       csf_vec.extend([int(l_arr[str_ind][i+nextl]) for i in range(nact)])       
+
+       # now add external
+       csf_vec.extend([0] * (2*nextl))
+       for i in range(nextl):
+           csf_vec[nintl+i]       = int(l_arr[str_ind][i])
+           csf_vec[nintl+nextl+i] = int(l_arr[3*(i+2)])
+
+    else:
+       csf_vec.extend([int(l_arr[3][i]) for i in range(len(l_arr[3]))])
+
+    return [nintl, nextl, csf_vec]

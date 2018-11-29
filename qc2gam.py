@@ -42,17 +42,23 @@ def process_arguments(args):
     else:
         basis_file = 'daltaoin'
 
+    if '-ci' in sys.argv:
+        ci_file    = args[args.index('-ci')+1]
+    # default to None
+    else:
+        ci_file    = None
+
     if '-output' in sys.argv:
         out_file   = args[args.index('-output')+1]
     else:
         out_file   = 'mos.dat'
 
-    return [input_style, geom_file, basis_file, mo_file, out_file]
+    return [input_style, geom_file, basis_file, mo_file, ci_file, out_file]
 
 #
 #
 #
-def convert(inp, gm, basis, mos, out):
+def convert(inp, gm, basis, mos, ci, out):
     """Documentation to come"""
     input_styles = ['columbus', 'turbomole']
     
@@ -64,6 +70,9 @@ def convert(inp, gm, basis, mos, out):
     # import the appropriate module
     qc_input =__import__(input_styles[input_mode], fromlist=['a'])
     
+    if ci is not None:
+        qc_input.generate_csf_list(ci)
+
     # parse the output and convert to GAMESS format
     [gam_basis, gam_mos] = qc_input.parse(gm, basis, mos)
 
@@ -75,8 +84,8 @@ def convert(inp, gm, basis, mos, out):
 if __name__ == '__main__':
 
     # parse command line arguments
-    [inp, gm, basis, mos, out] = process_arguments(sys.argv)
+    [inp, gm, basis, mos, ci, out] = process_arguments(sys.argv)
 
     # run the program
-    convert(inp, gm, basis, mos, out)
+    convert(inp, gm, basis, mos, ci, out)
 

@@ -16,22 +16,29 @@ ao_ordr         = [['s'],
                    ['fxxx','fxxy','fxxz','fxyy','fxyz',
                     'fxzz','fyyy','fyyz','fyzz','fzzz']]
 
+# dxy dxz dyz
 ao_norm         = [[1.],
                    [1.,1.,1.],
-                   [np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),
-                    np.sqrt(3.),np.sqrt(3.)],
+                   [0.5,np.sqrt(3.),np.sqrt(3.),0.5,np.sqrt(3.),0.5],
                    [np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
                     np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
                     np.sqrt(15.),np.sqrt(15.)]]
 
+#ao_norm         = [[1.],
+#                   [1.,1.,1.],
+#                   [1./np.sqrt(3.),1.,1.,1./np.sqrt(3.),1.,1./np.sqrt(3.),1.],
+#                   [1.,1.,1.,1.,1.,1.,1.,1.,1.,.1]]
+
+
+
 # how to convert from spherical to cartesian basis functions (in turbomole ordering)
 # s -> s | px -> px | py -> py | pz -> pz 
 # d ordering: d0, d1, d1-, d2-, d2
-# dxx ->  -d0 + d2+
-# dxy ->  d2-
+# dxx ->  -d0 + d2+ * sqrt(3)
+# dxy ->  d2- 
 # dxz ->  d1+
-# dyy -> -d0 - d2+
-# dyz ->  d1-
+# dyy -> -d0 - d2+ * sqrt(3)
+# dyz ->  d1- 
 # dzz -> 2. * d0
 # f ordering: f0, f1, f1-, f2-, f2, f3, f3-
 # fxxx -> -f1+ - f3+/15.
@@ -47,10 +54,10 @@ ao_norm         = [[1.],
 sph2cart        = [
                    [ [[0],[1.]] ],                                     # conversion for s orbitals
                    [ [[0],[1.]], [[1],[1.]], [[2],[1.]] ],             # conversion for p orbitals
-                   [ [[0,4],[-1.,1]], 
+                   [ [[0,4],[-1.,np.sqrt(3.)]], 
                      [[3],[1.]], 
                      [[1],[1.]],          # conversion for d orbitals
-                     [[0,4],[-1.,-1.]], 
+                     [[0,4],[-1.,-np.sqrt(3.)]], 
                      [[2],[1.]], 
                      [[0],[2.]] ],
                    [ [[1,5],[-1.,-1./15.]], 
@@ -227,7 +234,6 @@ def read_mos(mocoef_file, in_cart, basis):
             raw_orbs[-1].extend([float(mo_row[j*wid:(j+1)*wid])])
         i += 1
 
-
     # make sure all the mos are the same length
     uniq = list(set(n_ao_all))
     if len(uniq) != 1:
@@ -235,27 +241,18 @@ def read_mos(mocoef_file, in_cart, basis):
     else:
         n_aos = uniq[0]    
 
-    # determine if we using cartesian or spherical functions
-    n_cart = 0
-    n_sph  = 0
-    for atom_i in range(basis.geom.natoms()):
-        for bf_i in basis.basis_funcs[atom_i]:
-            n_cart += moinfo.nfunc_cart[bf_i.ang_mom]
-            n_sph  += moinfo.nfunc_sph[bf_i.ang_mom]
-
-    if n_aos == n_cart:
+    # determine if we're running in cartesian or spherically adapted
+    # atomic basis functions
+    if n_aos == basis.n_bf_cart:
         in_cart = True
-    elif n_aos == n_sph:
+    elif n_aos == basis.n_bf_sph:
         in_cart = False
     else:
         sys.exit('Number of basis functions is not equal to: '+str(uniq[0]))
 
-    # construct mapping array from COLUMBUS to GAMESS
-    turb_orb = np.array(raw_orbs).T
-    [turb_gam_map, scale_turb, scale_gam] = basis.construct_map(ao_ordr, ao_norm)
-
     # if in spherically adapted orbitals, first convert
     # to cartesians
+    turb_orb = np.array(raw_orbs).T
     if not in_cart:
         turb_orb_cart = moinfo.sph2cart(basis, turb_orb, sph2cart)
         nao_cart      = turb_orb_cart.shape[0]
@@ -266,6 +263,9 @@ def read_mos(mocoef_file, in_cart, basis):
     # copy orbitals into gam_orb 
     gam_orb = moinfo.orbitals(nao_cart, n_mos)
     gam_orb.mo_vectors = turb_orb_cart
+
+    # construct mapping array from TURBOMOLE to GAMESS
+    [turb_gam_map, scale_turb, scale_gam] = basis.construct_map(ao_ordr, ao_norm)
 
     # remove the dalton normalization factors
     gam_orb.scale(scale_turb)
