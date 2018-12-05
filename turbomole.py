@@ -13,10 +13,9 @@ import moinfo
 ao_ordr         = [['s'],
                    ['px','py','pz'],
                    ['dxx','dyy','dzz','dxy','dxz','dyz'],
-                   ['fxxx','fxxy','fxxz','fxyy','fxyz',
-                    'fxzz','fyyy','fyyz','fyzz','fzzz']]
+                   ['fxxx','fyyy','fzzz','fxxy','fxxz',
+                    'fxyy','fyyz','fxzz','fyzz','fxyz']]
 
-# dxy dxz dyz
 ao_norm         = [[1.],
                    [1.,1.,1.],
                    [np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),
@@ -29,23 +28,24 @@ ao_norm         = [[1.],
 # how to convert from spherical to cartesian basis functions (in turbomole ordering)
 # s -> s | px -> px | py -> py | pz -> pz 
 # d ordering: d0, d1, d1-, d2-, d2
-# dxx ->  -d0 + d2+ * sqrt(3)
+# dxx ->  0.5*( -d0/sqrt(3) + d2+ )
+# dyy ->  0.5*( -d0/sqrt(3) - d2+ )
+# dzz ->  d0 / sqrt(3)
 # dxy ->  d2- 
 # dxz ->  d1+
-# dyy -> -d0 - d2+ * sqrt(3)
 # dyz ->  d1- 
-# dzz -> 2. * d0
+
 # f ordering: f0, f1, f1-, f2-, f2, f3, f3-
-# fxxx -> -f1+ - f3+/15.
-# fxxy -> -f1- + sqrt(2)*f3-
-# fxxz -> f0 + f1
-# fxyy -> -f1 + f3
-# fxyz -> f2-
-# fxzz -> 4 * f1
-# fyyy -> -f1- - sqrt(2)*f3-
-# fyyz -> f0 - f2
-# fyzz -> 4 * f1-
-# fzzz -> -2 * f0 / 3
+# fxxx -> -f1+/sqrt(40) + f3+/sqrt(24)
+# fyyy -> -f1-/sqrt(40) + f3-/sqrt(24)
+# fzzz ->  f0/sqrt(15)
+# fxxy -> -f1-/sqrt(40) + f3- * sqrt(3/8)
+# fxxz -> -f0 * sqrt(3/20) + f2 / 2
+# fxyy -> -f1/sqrt(40) + f3 * sqrt(3/8)
+# fyyz -> -f0 * sqrt(3/20) - f2 / 2
+# fxzz ->  f1 * sqrt(2/5)
+# fyzz ->  f1-* sqrt(2/5)
+# fxyz ->  f2-
 sph2cart        = [
                    [ [[0],[1.]] ],                                     # conversion for s orbitals
                    [ [[0],[1.]], [[1],[1.]], [[2],[1.]] ],             # conversion for p orbitals
@@ -55,16 +55,16 @@ sph2cart        = [
                      [[3],[1.]], 
                      [[1],[1.]],          # conversion for d orbitals
                      [[2],[1.]]],
-                   [ [[1,5],[-1.,-1./15.]], 
-                     [[2,6],[-1., np.sqrt(2.)]], # conversion for f orbitals
-                     [[0,1],[1.,1.]], 
-                     [[2,5],[-1.,1.]], 
-                     [[3],[1.]], 
-                     [[1],[4.]], 
-                     [[2,6],[-1, -np.sqrt(2.)]], 
-                     [[0,4],[1.,-1.]],
-                     [[2],[4.]], 
-                     [[0], [-2./3.]] ]
+                   [ [[1,5],[-1/(2.*np.sqrt(10.)), 1./(2.*np.sqrt(6.))]], 
+                     [[2,6],[-1/(2.*np.sqrt(10.)), 1./(2.*np.sqrt(6.))]], # conversion for f orbitals
+                     [[0], [1./np.sqrt(15.)]],
+                     [[2,6],[-1/(2.*np.sqrt(10.)),-np.sqrt(3.)/(2.*np.sqrt(2.))]],
+                     [[0,4],[-np.sqrt(3./5.)/2.  , 1./2.]], 
+                     [[1,5],[-1/(2.*np.sqrt(10.)),-np.sqrt(3.)/(2.*np.sqrt(2.))]],
+                     [[0,4],[-np.sqrt(3./5.)/2.  ,-1./2.]],
+                     [[1],[np.sqrt(2./5.)]], 
+                     [[2],[np.sqrt(2./5.)]], 
+                     [[3],[1.]]]
                   ] 
 
 def parse(geom_file, basis_file, mo_file):
