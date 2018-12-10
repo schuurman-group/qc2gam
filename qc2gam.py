@@ -18,41 +18,54 @@ import turbomole
 def process_arguments(args):
     """Process command line arguments."""
 
+    input_style = None
+    geom_file   = None
+    mo_file     = None
+    basis_file  = None
+    ci_file     = None
+    out_file    = None
+
+    # read the command line arguments
     if '-input' in sys.argv:
         input_style = args[args.index('-input')+1]
-    else:
-    # default to COLUMBUS
-        input_style = 'columbus'
 
     if '-geom' in sys.argv:
         geom_file = args[args.index('-geom')+1]
-    # default to geometry file: geom
-    else:
-        geom_file = 'geom'
 
     if '-mos' in sys.argv:
         mo_file  = args[args.index('-mos')+1]
-    # default to mos file 'mocoef'
-    else:
-        mo_file = 'mocoef'
 
     if '-basis' in sys.argv:
         basis_file = args[args.index('-basis')+1] 
-    # default to daltaoin
-    else:
-        basis_file = 'daltaoin'
 
     if '-ci' in sys.argv:
         ci_file    = args[args.index('-ci')+1]
-    # default to None
-    else:
-        ci_file    = None
 
     if '-output' in sys.argv:
         out_file   = args[args.index('-output')+1]
-    else:
-        out_file   = 'mos.dat'
 
+    # use the default output file name (mos.dat) if this has not been given
+    # by the user
+    if out_file == None:
+        out_file = 'mos.dat'
+        
+    # if they have not been given, fill in the names of the geometry,
+    # MO and basis files using the names usually used by the given program
+    if input_style == 'turbomole':
+        if geom_file == None:
+            geom_file = 'coord'
+        if mo_file == None:
+            mo_file = 'mos'
+        if basis_file == None:
+            basis_file = 'basis'
+    elif input_style == 'columbus':
+        if geom_file == None:
+            geom_file = 'geom'
+        if mo_file == None:
+            mo_file = 'mocoef'
+        if basis_file == None:
+            basis_file = 'daltaoin'
+        
     return [input_style, geom_file, basis_file, mo_file, ci_file, out_file]
 
 #
