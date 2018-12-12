@@ -1,25 +1,20 @@
 #!/usr/bin/env python
-#
-#
-# Program to convert quantum chemistry output 
-# (i.e. CI wavefunctions and molecular orbitals)
-# to GAMESS/Multigrid type format
-#
-#
-
+"""
+Program to convert quantum chemistry output
+(i.e. CI wavefunctions and molecular orbitals)
+to GAMESS/Multigrid type format
+"""
 import sys
 import columbus
 import dalton
 import turbomole
 
-#
-#
-#
+
 def process_arguments(args):
     """Process command line arguments."""
-
     input_style = None
     geom_file   = None
+    gorder      = None
     mo_file     = None
     basis_file  = None
     ci_file     = None
@@ -32,11 +27,14 @@ def process_arguments(args):
     if '-geom' in sys.argv:
         geom_file = args[args.index('-geom')+1]
 
+    if '-ordr' in sys.argv:
+        gorder = args[args.index('-ordr')+1]
+
     if '-mos' in sys.argv:
         mo_file  = args[args.index('-mos')+1]
 
     if '-basis' in sys.argv:
-        basis_file = args[args.index('-basis')+1] 
+        basis_file = args[args.index('-basis')+1]
 
     if '-ci' in sys.argv:
         ci_file    = args[args.index('-ci')+1]
@@ -48,7 +46,7 @@ def process_arguments(args):
     # by the user
     if out_file == None:
         out_file = 'mos.dat'
-        
+
     # if they have not been given, fill in the names of the geometry,
     # MO and basis files using the names usually used by the given program
     if input_style == 'turbomole':
@@ -65,29 +63,22 @@ def process_arguments(args):
             mo_file = 'mocoef'
         if basis_file == None:
             basis_file = 'daltaoin'
-        
-    return [input_style, geom_file, basis_file, mo_file, ci_file, out_file]
+    else:
+        raise ValueError('input style '+str(inp)+' not recognized.')
 
-#
-#
-#
-def convert(inp, gm, basis, mos, ci, out):
-    """Documentation to come"""
-    input_styles = ['columbus', 'turbomole']
-    
-    try:
-        input_mode = input_styles.index(inp)
-    except:
-        sys.exit('input style '+str(inp)+' not recognized.')
+    return input_style, geom_file, gorder, basis_file, mo_file, ci_file, out_file
 
+
+def convert(inp, gm, go, basis, mos, ci, out):
+    """Convert orbital/basis information to GAMESS format."""
     # import the appropriate module
-    qc_input =__import__(input_styles[input_mode], fromlist=['a'])
-    
+    qc_input =__import__(inp, fromlist=['a'])
+
     if ci is not None:
         qc_input.generate_csf_list(ci)
 
     # parse the output and convert to GAMESS format
-    [gam_basis, gam_mos] = qc_input.parse(gm, basis, mos)
+    gam_basis, gam_mos = qc_input.parse(gm, go, basis, mos)
 
     # print the MOs file
     gam_basis.print_basis_set(out)
@@ -95,10 +86,9 @@ def convert(inp, gm, basis, mos, ci, out):
 
 
 if __name__ == '__main__':
-
     # parse command line arguments
-    [inp, gm, basis, mos, ci, out] = process_arguments(sys.argv)
+    args = process_arguments(sys.argv)
 
     # run the program
-    convert(inp, gm, basis, mos, ci, out)
+    convert(*args)
 

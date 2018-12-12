@@ -1,9 +1,7 @@
-# 
-# A set of routines to parse the output of a columbus 
-# calculation
-#
-#
-
+"""
+A set of routines to parse the output of a columbus
+calculation
+"""
 import sys
 import numpy as np
 import moinfo
@@ -25,7 +23,7 @@ ao_norm         = [[1.],
                     np.sqrt(15.),np.sqrt(15.)]]
 
 # how to convert from spherical to cartesian basis functions (in columubs ordering)
-# s -> s | px -> px | py -> py | pz -> pz 
+# s -> s | px -> px | py -> py | pz -> pz
 # d ordering: d2-, d1-, d0, d1+ ,d2+
 # dxx ->  -d0 + d2+
 # dxy ->  d2-
@@ -35,7 +33,7 @@ ao_norm         = [[1.],
 # dzz -> 2. * d0
 # f ordering: f3-, f2-, f1-, f0, f1+, f2+, f3+
 # fxxx -> -f1+ - f3+/15.
-# fxxy -> sqrt(2)*f3- - f1- 
+# fxxy -> sqrt(2)*f3- - f1-
 # fxxz -> f0 + f1
 # fxyy -> -f1 + f3
 # fxyz -> f2-
@@ -47,80 +45,79 @@ ao_norm         = [[1.],
 sph2cart        = [
                    [ [[0],[1.]] ],                                     # conversion for s orbitals
                    [ [[0],[1.]], [[1],[1.]], [[2],[1.]] ],             # conversion for p orbitals
-                   [ [[2,4],[-1.,1]], 
-                     [[0],[1.]], 
+                   [ [[2,4],[-1.,1]],
+                     [[0],[1.]],
                      [[3],[1.]],          # conversion for d orbitals
-                     [[2,4],[-1.,-1.]], 
-                     [[1],[1.]], 
+                     [[2,4],[-1.,-1.]],
+                     [[1],[1.]],
                      [[2],[2.]] ],
-                   [ [[4,6],[-1.,-1./15.]], 
+                   [ [[4,6],[-1.,-1./15.]],
                      [[0,2],[np.sqrt(2.),-1.]], # conversion for f orbitals
-                     [[3,5],[1.,1.]], 
-                     [[4,6],[-1.,1.]], 
-                     [[1],[1.]], 
-                     [[4],[4.]], 
-                     [[0,2],[-np.sqrt(2.),-1.]], 
+                     [[3,5],[1.,1.]],
+                     [[4,6],[-1.,1.]],
+                     [[1],[1.]],
+                     [[4],[4.]],
+                     [[0,2],[-np.sqrt(2.),-1.]],
                      [[3,5],[1.,-1.]],
-                     [[2],[4.]], 
+                     [[2],[4.]],
                      [[3], [-2./3.]] ]
-                  ] 
+                  ]
 
-def parse(geom_file, basis_file, mo_file):
+
+def parse(geom_file, geom_ordr, basis_file, mo_file):
     """Documentation to come"""
-
     # read columbus geometry file
-    gam_geom  = read_geom(geom_file)
-    
+    gam_geom = read_geom(geom_file)
+    if geom_ordr is not None:
+        gam_ordr = read_geom(geom_ordr)
+        gam_geom.reorder(gam_ordr)
+
     # parse daltaoin file to get basis information
-    [in_cart, gam_basis] = read_basis(basis_file, gam_geom)
+    in_cart, gam_basis = read_basis(basis_file, gam_geom)
 
     # parse mocoef file to pull out orbitals
-    gam_mos   = read_mos(mo_file, in_cart, gam_basis)
+    gam_mos = read_mos(mo_file, in_cart, gam_basis)
 
-    return [gam_basis, gam_mos]
+    return gam_basis, gam_mos
 
-#
+
 def read_geom(geom_file):
-    """reads a columbus geom and loads results into moinfo.geom format"""
-
+    """Reads a columbus geom and loads results into moinfo.Geom format"""
     # create geometry object to hold the data
-    geom = moinfo.geom()
+    geom = moinfo.Geom()
 
     # slurp up geometry file
-    with open(geom_file) as col_geom: 
+    with open(geom_file, 'r') as col_geom:
         gfile = col_geom.readlines()
-   
+
     atoms = []
     for i in range(len(gfile)):
         gstr   = gfile[i].split() # format = asym, anum, coords
         asym   = gstr[0].upper().rjust(2)
         coords = [float(gstr[i])*moinfo.au2ang for i in range(2,5)]
-        atom_i = moinfo.atom(asym,coords)
-        geom.add_atom(atom_i) 
+        atom_i = moinfo.Atom(asym, coords)
+        geom.add_atom(atom_i)
 
     return geom
 
+
 def read_basis(basis_file, geom):
     """Documentation to come"""
-
     # create basis set object
-    basis = moinfo.basis_set('unknown',geom)
+    basis = moinfo.BasisSet('unknown',geom)
 
     # slurp up daltaoin file
-    with open(basis_file) as daltaoin:
+    with open(basis_file, 'r') as daltaoin:
         bfile = daltaoin.readlines()
-   
+
     # step through daltaoin file and read functions
     # first thing to check: cartesians/spherical and how many
     # groups of contractions
-    i = 0
-    while True:
-        if len(bfile[i].split())>0:
+    for i in range(len(bfile)):
+        if len(bfile[i].split()) > 0:
             if (bfile[i].split()[0].lower() == 'c' or
-               bfile[i].split()[0].lower() == 's'):
-                break   
-
-        i+=1
+                bfile[i].split()[0].lower() == 's'):
+                break
 
     in_cartesians = bfile[i].split()[0].lower() == 'c'
     n_grp         = int(bfile[i].split()[1])
@@ -129,25 +126,25 @@ def read_basis(basis_file, geom):
     atm_cnt = 0
     for j in range(n_grp):
         i += 1
-        [n_atm,n_shl]         = list(map(int,bfile[i].split()[1:3]))
-        n_per_shell           = list(map(int,bfile[i].split()[3:]))
- 
+        n_atm, n_shl = list(map(int,bfile[i].split()[1:3]))
+        n_per_shell  = list(map(int,bfile[i].split()[3:]))
+
         # for time being assume C1, so number of atoms in
         # daltaoin file == number of atoms in geom file
         for k in range(n_atm):
           i+=1
-          [a_sym, a_index, x, y, z, sym] = bfile[i].split()
+          a_sym, a_index, x, y, z, sym = bfile[i].split()
           if a_sym.upper().rjust(2) != geom.atoms[atm_cnt+k].symbol:
-              sys.exit('Mismatch between daltaoin and geom file, atom='+str(atm_cnt+k))
+              raise ValueError('Mismatch between daltaoin and geom file, atom='+str(atm_cnt+k))
 
         # loop over the number of angular momentum shells
         ang_mom = -1
         for k in range(n_shl):
             ang_mom += 1
             for l in range(n_per_shell[k]):
-                i+=1 
-                [n_prim, n_con] = list(map(int,bfile[i].split()[1:]))
-                b_funcs = [moinfo.basis_function(ang_mom) for m in range(n_con)]
+                i+=1
+                n_prim, n_con = list(map(int,bfile[i].split()[1:]))
+                b_funcs = [moinfo.BasisFunction(ang_mom) for m in range(n_con)]
                 for m in range(n_prim):
                     i+=1
                     exp_con = list(map(float,bfile[i].split()))
@@ -158,11 +155,12 @@ def read_basis(basis_file, geom):
                 for m in range(n_atm):
                     for n in range(n_con):
                         basis.add_function(atm_cnt+m, b_funcs[n])
-                   
+
         # increment atom counter
         atm_cnt += n_atm
 
-    return [in_cartesians, basis]
+    return in_cartesians, basis
+
 
 def read_mos(mocoef_file, in_cart, basis):
     """Documentation to come"""
@@ -170,10 +168,10 @@ def read_mos(mocoef_file, in_cart, basis):
     # So: in the future, we should also allow for a mapping array that
     # allows for taking linear combinations of elements in order to convert
     # from a spherically adapted basis to cartesians. That will come later
-    # though...first the easy stuff.    
+    # though...first the easy stuff.
 
     # slurp up the mocoef file
-    with open(mocoef_file) as mocoef:
+    with open(mocoef_file, 'r') as mocoef:
         mo_file = mocoef.readlines()
 
     # move to the first line of the orbital coefficients, reading nao and nmo
@@ -182,8 +180,8 @@ def read_mos(mocoef_file, in_cart, basis):
     while(mo_file[line_index].split()[0][0] != '('):
         line_index += 1
         # figure out nao, nmo
-        if mo_file[line_index].split()[0] == "A":
-            [nao, nmo] = list(map(int,mo_file[line_index-1].split()))
+        if mo_file[line_index].split()[0] == 'A':
+            nao, nmo = list(map(int,mo_file[line_index-1].split()))
 
     # create a numpy array to hold orbitals
     col_orb = np.zeros((nao,nmo),dtype=float)
@@ -194,7 +192,7 @@ def read_mos(mocoef_file, in_cart, basis):
             line_index += 1
             line_arr    = mo_file[line_index].split()
             col_orb[3*row:3*row+min(n_remain,3),i] = np.array(
-               [line_arr[k].replace("D","e") for k in range(len(line_arr))],dtype=float)             
+               [line_arr[k].replace('D','e') for k in range(len(line_arr))],dtype=float)
             n_remain -= min(n_remain,3)
             row += 1
 
@@ -205,18 +203,18 @@ def read_mos(mocoef_file, in_cart, basis):
         nao_cart     = col_orb_cart.shape[0]
     else:
         col_orb_cart = col_orb
-        nao_cart     = nao 
-      
-    # copy orbitals into gam_orb 
-    gam_orb = moinfo.orbitals(nao_cart, nmo)
+        nao_cart     = nao
+
+    # copy orbitals into gam_orb
+    gam_orb = moinfo.Orbitals(nao_cart, nmo)
     gam_orb.mo_vectors = col_orb_cart
 
     # construct mapping array from COLUMBUS to GAMESS
-    [dalt_gam_map, scale_col, scale_gam] = basis.construct_map(ao_ordr, ao_norm)
+    dalt_gam_map, scale_col, scale_gam = basis.construct_map(ao_ordr, ao_norm)
 
     # remove the dalton normalization factors
     gam_orb.scale(scale_col)
-  
+
     # re-sort orbitals to GAMESS ordering
     gam_orb.sort(dalt_gam_map)
 
@@ -225,54 +223,44 @@ def read_mos(mocoef_file, in_cart, basis):
 
     return gam_orb
 
-#
-#
-def generate_csf_list(ci_file):
-    """generate a list of CSFs from a cipcls file"""
 
-    [valid, is_cipc] = is_cipcls(ci_file)
+def generate_csf_list(ci_file):
+    """Generates a list of CSFs from a cipcls file"""
+    valid, is_cipc = is_cipcls(ci_file)
 
     if not valid:
-        sys.exit('Cannot parse csf list output: not cipcls or mcpcls\n')
+        raise SyntaxError('Cannot parse csf list output: not cipcls or mcpcls\n')
 
     # parse cipcls or mcpcls file
-    [n_occ, n_extl, csf_list] = parse_ci_file(ci_file, is_cipc)
+    n_occ, n_extl, csf_list = parse_ci_file(ci_file, is_cipc)
 
     # print the csf_list to file
     print_csf_list(n_occ, n_extl, csf_list)
 
-    return
 
-#
-#
 def is_cipcls(in_file):
-    """return true,true if the file to parse is a cipcls file,
-       true,false if mcpcls file, and false,false is file not
-       recognized"""
+    """Returns true, true if the file to parse is a cipcls file,
+    true, false if mcpcls file, and false, false is file not
+    recognized"""
+    ci_str = 'PROGRAM:              CIPC'
+    mc_str = 'PROGRAM:              MCPC'
 
-    ci_str = "PROGRAM:              CIPC"
-    mc_str = "PROGRAM:              MCPC"
-
-    with open(in_file) as ci_file:
-
+    with open(in_file, 'r') as ci_file:
         for line in ci_file:
-
-            # if cipcls file, return valid_file=True, cipcls=True 
+            # if cipcls file, return valid_file=True, cipcls=True
             if ci_str in line:
-                return [True, True]
+                return True, True
 
             # if mcpcls file, return valid_file=True, cipcls=False
             if mc_str in line:
-                return [True, False]
+                return True, False
 
     # if neither cipcls or mcpcls file, file not valid
-    return [False,False]
+    return False, False
 
-#
-#
+
 def parse_ci_file(ci_file, is_cipc):
-    """parse cipcls file, extract csf list and coefficients"""
-
+    """Parses cipcls file, extract csf list and coefficients"""
     csf_list   = []
     ci_str     = '  ------- -------- ------- - ---- --- ---- --- ------------'
     mc_str     = '-----  ------------  ------------  ------------'
@@ -282,9 +270,8 @@ def parse_ci_file(ci_file, is_cipc):
     parse_line = False
     read_docc  = False
     istate     = -1
-    with open(ci_file) as cipcls:
+    with open(ci_file, 'r') as cipcls:
         for line in cipcls:
-
             # read the number of frozen orbitals (if cipcls)
             if 'frozen orbital =' in line and is_cipc:
                 l_arr = line.strip().split()
@@ -299,7 +286,7 @@ def parse_ci_file(ci_file, is_cipc):
             # read in the number of doubly occupied orbitals (for mcpcls)
             if read_docc:
                 l_arr = line.strip().split()
-                if len(l_arr)==0:
+                if len(l_arr) == 0:
                     read_docc = False
                     continue
                 else:
@@ -316,7 +303,7 @@ def parse_ci_file(ci_file, is_cipc):
             # read a csf line
             if parse_line:
                 l_arr = line.strip().split()
- 
+
                 # stopping criteria for cipcls
                 if 'csfs were printed' in line:
                     parse_line = False
@@ -327,19 +314,18 @@ def parse_ci_file(ci_file, is_cipc):
                     parse_line = False
                     continue
 
-                [n_int, n_ext, csf_vec] = parse_ci_line(is_cipc, ndocc, l_arr)
+                n_int, n_ext, csf_vec = parse_ci_line(is_cipc, ndocc, l_arr)
                 csf_list[istate].append([float(l_arr[1]),csf_vec])
 
                 # total number of external orbitals is set to the csfs with
                 # highest excitation order
                 nextl = max(nextl, n_ext)
 
-    return [n_int, nextl, csf_list]
+    return n_int, nextl, csf_list
 
-#
-#
+
 def print_csf_list(n_occ, n_extl, csf_list):
-    """prints csf list in csf2det format"""
+    """Prints csf list in csf2det format"""
 
     csf_fmt = ('{:14.10f}'+''.join('{:2d}' for i in range(n_occ))+
                            ''.join('{:4d}:{:2d}' for i in range(n_extl))+
@@ -362,13 +348,10 @@ def print_csf_list(n_occ, n_extl, csf_list):
             dat_file.write(csf_fmt.format(*data))
 
         dat_file.close()
-    return
 
-#
-#
+
 def parse_ci_line(is_cipc, ndocc, l_arr):
-    """parses an occupation array from cipcls or mcpcls"""
-
+    """Parses an occupation array from cipcls or mcpcls"""
     csf_vec = [3] * ndocc
 
     if is_cipc:
@@ -378,7 +361,7 @@ def parse_ci_line(is_cipc, ndocc, l_arr):
        nintl   = ndocc + nact
 
        # first add internal orbitals
-       csf_vec.extend([int(l_arr[str_ind][i+nextl]) for i in range(nact)])       
+       csf_vec.extend([int(l_arr[str_ind][i+nextl]) for i in range(nact)])
 
        # now add external
        csf_vec.extend([0] * (2*nextl))
@@ -389,4 +372,4 @@ def parse_ci_line(is_cipc, ndocc, l_arr):
     else:
        csf_vec.extend([int(l_arr[3][i]) for i in range(len(l_arr[3]))])
 
-    return [nintl, nextl, csf_vec]
+    return nintl, nextl, csf_vec
