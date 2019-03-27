@@ -331,6 +331,7 @@ def print_csf_list(n_occ, n_extl, csf_list):
                            ''.join('{:4d}:{:2d}' for i in range(n_extl))+
                            '\n')
 
+    print("n_occ="+str(n_occ)+"\n")
     for state in range(len(csf_list)):
         dat_file = open('csf'+str(state+1), 'x')
 
@@ -338,9 +339,9 @@ def print_csf_list(n_occ, n_extl, csf_list):
             data = [csf[0]]
             ext_vec = [0] * (2*n_extl)
             n_ext = int((len(csf[1]) -  n_occ) / 2)
-
+            print("n_extl, csf, n_ext="+str(n_extl)+" / "+str(csf)+" / "+str(n_ext)+"\n")
             for i in range(n_ext):
-                ext_vec[2*i]   = csf[1][n_occ+n_extl+i]
+                ext_vec[2*i]   = csf[1][n_occ+n_ext+i]
                 ext_vec[2*i+1] = csf[1][n_occ+i]
 
             data.extend(csf[1][0:n_occ])
