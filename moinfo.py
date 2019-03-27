@@ -3,7 +3,6 @@ A set of standard structures to store basis set
 of MO information
 """
 import os
-import math
 import numpy as np
 
 a_symbols       = [' H','HE',
@@ -37,7 +36,7 @@ au2ang          = 0.529177249
 
 def sph2cart(basis, mo_sph, s2c):
     """Converts orbitals from spherical to cartesian AO basis. Assumes
-       input orbitals are numpy array"""
+    input orbitals are numpy array."""
     nao_sph, nmo = mo_sph.shape
     l_cart, l_sph = basis.ang_mom_lst()
 
@@ -54,7 +53,8 @@ def sph2cart(basis, mo_sph, s2c):
         iao_sph  += nfunc_sph[lval]
 
     if iao_sph != basis.n_bf_sph:
-        raise ValueError('Error in sph2cart: {:d} != {:d}'.format(iao_sph, basis.n_bf_sph))
+        raise ValueError('Error in sph2cart: {:d} '.format(iao_sph) +
+                         '!= {:d}'.format(basis.n_bf_sph))
 
     return np.array(orb_trans).T
 
@@ -94,7 +94,6 @@ class Atom:
 class Geom:
     """Class to hold geometry information."""
     def __init__(self, atoms=None):
-        """Documentation to come"""
         # if atoms is None, initialize empty atom list
         if atoms is None:
             self.atoms = np.array([], dtype=object)
@@ -103,13 +102,13 @@ class Geom:
         self.atom_map = np.arange(self.natoms())
 
     def add_atom(self, atom):
-        """Documentation to come"""
+        """Adds an atom to the geometry."""
         nat = self.natoms()
         self.atoms = np.hstack((self.atoms, atom))
         self.atom_map = np.hstack((self.atom_map, nat))
 
     def natoms(self):
-        """Documentation to come"""
+        """Gets the number of atoms."""
         return len(self.atoms)
 
     def reorder(self, other_geom):
@@ -122,7 +121,7 @@ class Geom:
         self.atoms = self.atoms[self.atom_map]
 
     def print_geom(self, file_handle):
-        """Prints geometry in GAMESS format"""
+        """Prints geometry in GAMESS format."""
         for i in range(self.natoms()):
             self.atoms[i].print_atom(file_handle)
 
@@ -138,13 +137,14 @@ class Geom:
 class Orbitals:
     """Wrapper to hold information about the orbitals."""
     def __init__(self, n_aos, n_mos):
-        """Documentation to come"""
         # number of AOs
         self.naos       = n_aos
         # number of MOs
         self.nmos       = n_mos
         # matrix holding MOs
-        self.mo_vectors = np.zeros((n_aos,n_mos),dtype=float)
+        self.mo_vectors = np.zeros((n_aos, n_mos), dtype=float)
+        # vector holding occupations
+        self.occ        = None
 
     def add(self, mo_vec):
         """Adds an orbital to the end of the list (i.e. at first column
@@ -169,14 +169,14 @@ class Orbitals:
         self.mo_vectors = np.delete(self.mo_vectors,mo_i,axis=1)
 
     def scale(self, fac_vec):
-        """Scales each MO by the vector fac_vec"""
+        """Scales each MO by the vector fac_vec."""
         scale_fac       = np.array(fac_vec)
         old_mos         = self.mo_vectors.T
         new_mos         = np.array([mo * scale_fac for mo in old_mos]).T
         self.mo_vectors = new_mos
 
     def sort(self, map_lst):
-        """Re-sorts the MOs, ordering the AO indices via map_lst"""
+        """Re-sorts the MOs, ordering the AO indices via map_lst."""
         for i in range(self.nmos):
             vec_srt = self.mo_vectors[map_lst,i]
             self.mo_vectors[:,i] = vec_srt
@@ -198,20 +198,34 @@ class Orbitals:
                 self.print_movec(mo_file, i)
             mo_file.write(' $END\n')
 
+    def print_occ(self, file_name, n_orb=None):
+        """Prints orbital occupations."""
+        if n_orb is None:
+            n_orb = self.nmos
+
+        n_col = 5
+        n_row = int(np.ceil(n_orb / n_col))
+        with open(file_name, 'a') as mo_file:
+            mo_file.write(' $RDMPCE\n')
+            for i in range(n_row):
+                n_end = min(n_orb, 5*(i+1))
+                oc_row = (n_end - 5*i)*'{:15.12f}' + '\n'
+                r_data = self.occ[5*i:n_end]
+                mo_file.write(oc_row.format(*r_data))
+            mo_file.write(' $END\n')
+
     def print_movec(self, file_handle, mo_i):
         """Prints an orbital vector."""
         n_col  = 5 # this is set by GAMESS format
-        n_row  = int(math.ceil(self.naos/n_col))
+        n_row  = int(np.ceil(self.naos / n_col))
         mo_lab = (mo_i+1) % 100
-
-        def mo_row(n):
-            return ('{:>2d}'+' '+'{:>2d}'+''.join('{:15.8E}' for i in range(n))+'\n')
 
         for i in range(n_row):
             r_data = [mo_lab, i+1]
-            n_coef  = min(self.naos,5*(i+1)) - 5*i
-            r_data.extend(self.mo_vectors[5*i:min(self.naos,5*(i+1)),mo_i].tolist())
-            file_handle.write(mo_row(n_coef).format(*r_data))
+            n_end = min(self.naos,5*(i+1))
+            mo_row = '{:>2d}{:>3d}' + (n_end - 5*i)*'{:15.8E}' + '\n'
+            r_data += self.mo_vectors[5*i:n_end,mo_i].tolist()
+            file_handle.write(mo_row.format(*r_data))
 
 
 class BasisFunction:
@@ -230,13 +244,13 @@ class BasisFunction:
         self.coefs   = []
 
     def add_primitive(self, expo, coef):
-        """Documentation to come"""
+        """Adds a primitive to the basis function."""
         self.exps.extend([expo])
         self.coefs.extend([coef])
         self.n_prim += 1
 
     def print_basis_function(self, file_handle):
-        """Documentation to come"""
+        """Prints the basis function in gamess format."""
         ofmt1 = ('{:1s}'+'{:>6d}'+'\n')
         ofmt2 = ('{:>3d}'+'{:>15.7f}'+'{:>23.7f}'+'\n')
 
@@ -265,7 +279,7 @@ class BasisSet:
 
     def ang_mom_lst(self):
         """Returns an array containing the value of angular momentum of the
-        corresponding at that index"""
+        corresponding at that index."""
         ang_mom_cart = []
         ang_mom_sph  = []
 
@@ -279,7 +293,7 @@ class BasisSet:
 
     def add_function(self, atom_i, bf):
         """Adds a basis function to the basis_set -- always keeps "like"
-        angular momentum functions together"""
+        angular momentum functions together."""
         ang_mom = bf.ang_mom
         if len(self.basis_funcs[atom_i])>0:
             bf_i = 0

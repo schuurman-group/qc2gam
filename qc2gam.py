@@ -10,61 +10,39 @@ import dalton
 import turbomole
 
 
-def process_arguments(args):
+def get_arg(kwd, default):
+    """Gets a keyword argument from sys.argv if present, otherwise sets
+    the value to a given default."""
+    args = sys.argv
+    if kwd in args:
+        return args[args.index(kwd)+1]
+    else:
+        return default
+
+
+def process_arguments():
     """Process command line arguments."""
-    input_style = None
-    geom_file   = None
-    gorder      = None
-    mo_file     = None
-    basis_file  = None
-    ci_file     = None
-    out_file    = None
-
-    # read the command line arguments
-    if '-input' in sys.argv:
-        input_style = args[args.index('-input')+1]
-
-    if '-geom' in sys.argv:
-        geom_file = args[args.index('-geom')+1]
-
-    if '-ordr' in sys.argv:
-        gorder = args[args.index('-ordr')+1]
-
-    if '-mos' in sys.argv:
-        mo_file  = args[args.index('-mos')+1]
-
-    if '-basis' in sys.argv:
-        basis_file = args[args.index('-basis')+1]
-
-    if '-ci' in sys.argv:
-        ci_file    = args[args.index('-ci')+1]
-
-    if '-output' in sys.argv:
-        out_file   = args[args.index('-output')+1]
-
-    # use the default output file name (mos.dat) if this has not been given
-    # by the user
-    if out_file == None:
-        out_file = 'mos.dat'
-
-    # if they have not been given, fill in the names of the geometry,
+    # if they have not been given, fill in the names of the output, geometry,
     # MO and basis files using the names usually used by the given program
+    input_style = get_arg('-input', None)
     if input_style == 'turbomole':
-        if geom_file == None:
-            geom_file = 'coord'
-        if mo_file == None:
-            mo_file = 'mos'
-        if basis_file == None:
-            basis_file = 'basis'
+        geom_file = 'coord'
+        mo_file = 'mos'
+        basis_file = 'basis'
     elif input_style == 'columbus':
-        if geom_file == None:
-            geom_file = 'geom'
-        if mo_file == None:
-            mo_file = 'mocoef'
-        if basis_file == None:
-            basis_file = 'daltaoin'
+        geom_file = 'geom'
+        mo_file = 'mocoef'
+        basis_file = 'daltaoin'
     else:
         raise ValueError('input style '+str(inp)+' not recognized.')
+
+    # read the command line arguments
+    geom_file  = get_arg('-geom', geom_file)
+    mo_file    = get_arg('-mos', mo_file)
+    basis_file = get_arg('-basis', basis_file)
+    gorder     = get_arg('-ordr', None)
+    ci_file    = get_arg('-ci', None)
+    out_file   = get_arg('-output', 'mos.dat')
 
     return input_style, geom_file, gorder, basis_file, mo_file, ci_file, out_file
 
@@ -72,7 +50,7 @@ def process_arguments(args):
 def convert(inp, gm, go, basis, mos, ci, out):
     """Convert orbital/basis information to GAMESS format."""
     # import the appropriate module
-    qc_input =__import__(inp, fromlist=['a'])
+    qc_input = __import__(inp, fromlist=['a'])
 
     if ci is not None:
         qc_input.generate_csf_list(ci)
@@ -83,12 +61,13 @@ def convert(inp, gm, go, basis, mos, ci, out):
     # print the MOs file
     gam_basis.print_basis_set(out)
     gam_mos.print_orbitals(out)
+    if gam_mos.occ is not None:
+        gam_mos.print_occ(out)
 
 
 if __name__ == '__main__':
     # parse command line arguments
-    args = process_arguments(sys.argv)
+    args = process_arguments()
 
     # run the program
     convert(*args)
-

@@ -7,23 +7,25 @@ import numpy as np
 import moinfo
 
 # TURBOMOLE orbital ordering (in cartesians)
-# s px py pz dxx dxy dxz dyy dyz dzz fxxx fxxy fxxz fxyy fxyz fxzz fyyy fyyz fyzz fzzz
-ao_ordr         = [['s'],
-                   ['px','py','pz'],
-                   ['dxx','dyy','dzz','dxy','dxz','dyz'],
-                   ['fxxx','fyyy','fzzz','fxxy','fxxz',
-                    'fxyy','fyyz','fxzz','fyzz','fxyz']]
+# s px py pz dxx dxy dxz dyy dyz dzz
+# fxxx fxxy fxxz fxyy fxyz fxzz fyyy fyyz fyzz fzzz
+ao_ordr = [['s'],
+           ['px', 'py', 'pz'],
+           ['dxx', 'dyy', 'dzz', 'dxy', 'dxz', 'dyz'],
+           ['fxxx', 'fyyy', 'fzzz', 'fxxy', 'fxxz',
+            'fxyy', 'fyyz', 'fxzz', 'fyzz', 'fxyz']]
 
-ao_norm         = [[1.],
-                   [1.,1.,1.],
-                   [np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),
-                    np.sqrt(3.),np.sqrt(3.),np.sqrt(3.)],
-                   [np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
-                    np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
-                    np.sqrt(15.),np.sqrt(15.)]]
+ao_norm = [[1.],
+           [1., 1., 1.],
+           [np.sqrt(3.), np.sqrt(3.), np.sqrt(3.),
+            np.sqrt(3.), np.sqrt(3.), np.sqrt(3.)],
+           [np.sqrt(15.), np.sqrt(15.), np.sqrt(15.), np.sqrt(15.),
+            np.sqrt(15.), np.sqrt(15.), np.sqrt(15.), np.sqrt(15.),
+            np.sqrt(15.), np.sqrt(15.)]]
 
 
-# how to convert from spherical to cartesian basis functions (in turbomole ordering)
+# how to convert from spherical to cartesian basis functions
+# (in turbomole ordering)
 # s -> s | px -> px | py -> py | pz -> pz
 # d ordering: d0, d1, d1-, d2-, d2
 # dxx ->  0.5*( -d0/sqrt(3) + d2+ )
@@ -44,30 +46,30 @@ ao_norm         = [[1.],
 # fxzz ->  f1 * sqrt(2/5)
 # fyzz ->  f1-* sqrt(2/5)
 # fxyz ->  f2-
-sph2cart        = [
-                   [ [[0],[1.]] ],                                     # conversion for s orbitals
-                   [ [[0],[1.]], [[1],[1.]], [[2],[1.]] ],             # conversion for p orbitals
-                   [ [[0,4],[-0.5/np.sqrt(3.), 0.5]],
-                     [[0,4],[-0.5/np.sqrt(3.),-0.5]],
-                     [[0],[1./np.sqrt(3.)]],
-                     [[3],[1.]],
-                     [[1],[1.]],          # conversion for d orbitals
-                     [[2],[1.]]],
-                   [ [[1,5],[-1/(2.*np.sqrt(10.)), 1./(2.*np.sqrt(6.))]],
-                     [[2,6],[-1/(2.*np.sqrt(10.)), 1./(2.*np.sqrt(6.))]], # conversion for f orbitals
-                     [[0], [1./np.sqrt(15.)]],
-                     [[2,6],[-1/(2.*np.sqrt(10.)),-np.sqrt(3.)/(2.*np.sqrt(2.))]],
-                     [[0,4],[-np.sqrt(3./5.)/2.  , 1./2.]],
-                     [[1,5],[-1/(2.*np.sqrt(10.)),-np.sqrt(3.)/(2.*np.sqrt(2.))]],
-                     [[0,4],[-np.sqrt(3./5.)/2.  ,-1./2.]],
-                     [[1],[np.sqrt(2./5.)]],
-                     [[2],[np.sqrt(2./5.)]],
-                     [[3],[1.]]]
-                  ]
+sph2cart = [
+    [[[0], [1.]]],                                          # conversion for s orbitals
+    [[[0], [1.]], [[1], [1.]], [[2], [1.]]],                # conversion for p orbitals
+    [[[0, 4], [-0.5/np.sqrt(3.),  0.5]],                    # conversion for d orbitals
+     [[0, 4], [-0.5/np.sqrt(3.), -0.5]],
+     [[0], [1./np.sqrt(3.)]],
+     [[3], [1.]],
+     [[1], [1.]],
+     [[2], [1.]]],
+    [[[1, 5], [-1/(2.*np.sqrt(10.)), 1./(2.*np.sqrt(6.))]], # conversion for f orbitals
+     [[2, 6], [-1/(2.*np.sqrt(10.)), 1./(2.*np.sqrt(6.))]],
+     [[0], [1./np.sqrt(15.)]],
+     [[2, 6], [-1/(2.*np.sqrt(10.)), -np.sqrt(3.)/(2.*np.sqrt(2.))]],
+     [[0, 4], [-np.sqrt(3./5.)/2., 1./2.]],
+     [[1, 5], [-1/(2.*np.sqrt(10.)), -np.sqrt(3.)/(2.*np.sqrt(2.))]],
+     [[0, 4], [-np.sqrt(3./5.)/2., -1./2.]],
+     [[1], [np.sqrt(2./5.)]],
+     [[2], [np.sqrt(2./5.)]],
+     [[3], [1.]]]
+            ]
 
 
 def parse(geom_file, geom_ordr, basis_file, mo_file):
-    """Documentation to come"""
+    """Parses a set of turbomole input files."""
     # read turbomole coord file
     gam_geom = read_geom(geom_file)
     if geom_ordr is not None:
@@ -84,7 +86,7 @@ def parse(geom_file, geom_ordr, basis_file, mo_file):
 
 
 def read_geom(geom_file):
-    """Reads a turbomole coord file and loads results into moinfo.Geom format"""
+    """Reads a turbomole coord file and loads results into moinfo.Geom."""
     # create geometry object to hold the data
     geom = moinfo.Geom()
 
@@ -107,8 +109,9 @@ def read_geom(geom_file):
 
     return geom
 
+
 def read_basis(basis_file, geom):
-    """Documentation to come"""
+    """Reads a turbomole basis file into moinfo.BasisSet."""
     # create basis set object
     basis = moinfo.BasisSet('unknown', geom)
 
@@ -182,13 +185,13 @@ def read_basis(basis_file, geom):
 
 
 def read_mos(mocoef_file, in_cart, basis):
-    """Documentation to come"""
+    """Reads a turbomole MO file into moinfo into moinfo.Orbitals.
 
-    # So: in the future, we should also allow for a mapping array that
-    # allows for taking linear combinations of elements in order to convert
-    # from a spherically adapted basis to cartesians. That will come later
-    # though...first the easy stuff.
-
+    So: in the future, we should also allow for a mapping array that
+    allows for taking linear combinations of elements in order to convert
+    from a spherically adapted basis to cartesians. That will come later
+    though... first the easy stuff.
+    """
     # slurp up the mocoef file
     with open(mocoef_file, 'r') as mos:
         mo_file = mos.readlines()
@@ -243,7 +246,8 @@ def read_mos(mocoef_file, in_cart, basis):
     elif n_aos == basis.n_bf_sph:
         in_cart = False
     else:
-        raise ValueError('Number of basis functions is not equal to: {:d}'.format(uniq[0]))
+        raise ValueError('Number of basis functions is not equal to: ' +
+                         '{:d}'.format(uniq[0]))
 
     # if in spherically adapted orbitals, first convert
     # to cartesians
