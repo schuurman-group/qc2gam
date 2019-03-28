@@ -190,28 +190,27 @@ def read_mos(mocoef_file, in_cart, basis):
     # create a numpy array to hold orbitals
     col_orb = np.zeros((nao, nmo), dtype=float)
     for i in range(nmo):
-        n_remain = nao
-        row      = 0
-        while(n_remain > 0):
+        norb = 0
+        while norb < nao:
             line_index += 1
-            line_arr    = mo_file[line_index].split()
-            col_orb[3*row:3*row+min(n_remain,3),i] = np.array(
-               [line_arr[k].replace('D','e') for k in range(len(line_arr))],
-               dtype=float)
-            n_remain -= min(n_remain, 3)
-            row += 1
+            line_arr = mo_file[line_index].replace('D','e').split()
+            nrow = len(line_arr)
+            col_orb[norb:norb+nrow,i] = np.array(line_arr, dtype=float)
+            norb += nrow
 
     # create a numpy array to hold populations, if present
     col_occ = np.zeros(nmo, dtype=float)
     nocc = 0
-    for i in range(2, len(mo_file)):
-        if 'orbocc' in mo_file[i-2] or nocc > 0:
-            occ_line = np.array(mo_file[i].replace('D','e').split(), dtype=float)
-            nrow = len(occ_line)
-            col_occ[nocc:nocc+nrow] = occ_line
+    while nocc < nmo:
+        line_index += 1
+        if line_index > len(mo_file):
+            col_occ = None
+            break
+        elif 'orbocc' in mo_file[line_index-2] or nocc > 0:
+            line_arr = mo_file[line_index].replace('D','e').split()
+            nrow = len(line_arr)
+            col_occ[nocc:nocc+nrow] = np.array(line_arr, dtype=float)
             nocc += nrow
-    if nocc == 0:
-        col_occ = None
 
     # if in spherically adapted orbitals, first convert
     # to cartesians
