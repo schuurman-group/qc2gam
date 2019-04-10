@@ -206,10 +206,10 @@ class Orbitals:
         n_col = 5
         n_row = int(np.ceil(n_orb / n_col))
         with open(file_name, 'a') as mo_file:
-            mo_file.write(' $RDMPCE\n')
+            mo_file.write(' $OCCNO\n')
             for i in range(n_row):
                 n_end = min(n_orb, 5*(i+1))
-                oc_row = (n_end - 5*i)*'{:15.12f}' + '\n'
+                oc_row = (n_end - 5*i)*'{:16.10f}' + '\n'
                 r_data = self.occ[5*i:n_end]
                 mo_file.write(oc_row.format(*r_data))
             mo_file.write(' $END\n')
