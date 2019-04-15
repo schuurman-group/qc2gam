@@ -181,7 +181,7 @@ def read_mos(mocoef_file, in_cart, basis):
     # move to the first line of the orbital coefficients, reading nao and nmo
     # along the way
     line_index = 0
-    while(mo_file[line_index].split()[0][0] != '('):
+    while mo_file[line_index].split()[0][0] != '(':
         line_index += 1
         # figure out nao, nmo
         if mo_file[line_index].split()[0].lower() == 'a':

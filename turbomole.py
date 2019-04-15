@@ -196,41 +196,35 @@ def read_mos(mocoef_file, in_cart, basis):
     with open(mocoef_file, 'r') as mos:
         mo_file = mos.readlines()
 
-    i        = 0
     wid      = 20
     n_mos    = 0
     n_ao_all = []
     raw_orbs = []
-    new_orb = False
-    while i < len(mo_file):
-        line = mo_file[i].split()
+    has_orb  = False
+    for raw_line in mo_file:
+        if has_orb:
+            # ignore comment line, break at new section or end
+            if raw_line[0] == '#':
+                continue
+            elif raw_line[0] == '$':
+                break
 
-        # ignore the first line
-        if line[0] == '$scfmo' or line[0] == '$end':
-            i += 1
-            continue
-
-        # if comment line, then ignore
-        if line[0] == '#':
-            i += 1
-            continue
-
-        # if line contains "eigenvalue", start new orbitals
-        if 'eigenvalue' in ' '.join(line).lower():
-            raw_orbs.append([])
-            n_ao_all.extend([0])
-            n_mos   += 1
-            new_orb = True
-            i       += 1
-            continue
-
-        # else, parse a line
-        mo_row = line[0].lower().replace('d','e')
-        n_cf = int(len(mo_row)/wid)
-        for j in range(n_cf):
-            n_ao_all[-1] += 1
-            raw_orbs[-1].extend([float(mo_row[j*wid:(j+1)*wid])])
-        i += 1
+            line = raw_line.split()
+            if 'eigenvalue' in raw_line.lower():
+                # if line contains "eigenvalue", start new orbitals
+                raw_orbs.append([])
+                n_ao_all.extend([0])
+                n_mos += 1
+            else:
+                # else, parse a line
+                mo_row = raw_line.lower().replace('d', 'e')
+                n_cf = int(len(mo_row) // wid)
+                for j in range(n_cf):
+                    n_ao_all[-1] += 1
+                    raw_orbs[-1].append(float(mo_row[j*wid:(j+1)*wid]))
+        else:
+            if '$scfmo' in raw_line or '$natural orbitals' in raw_line:
+                has_orb = True
 
     # make sure all the mos are the same length
     uniq = list(set(n_ao_all))
@@ -238,6 +232,28 @@ def read_mos(mocoef_file, in_cart, basis):
         raise ValueError('MOs have different numbers of AOs. Exiting...')
     else:
         n_aos = uniq[0]
+
+    # create a numpy array to hold populations, if present
+    turb_occ = np.zeros(n_mos, dtype=float)
+    has_occ  = False
+    for raw_line in mo_file:
+        if has_occ:
+            if raw_line[0] == '$':
+                break
+            else:
+                line = raw_line.split()
+                inds = np.array(line[1].split('-'), dtype=int)
+                if len(inds) == 1:
+                    turb_occ[inds[0]-1] = float(line[3])
+                else:
+                    turb_occ[inds[0]-1:inds[1]] = float(line[3])
+        else:
+            if 'occupation' in raw_line:
+                has_occ = True
+                continue
+
+    if not has_occ:
+        turb_occ = None
 
     # determine if we're running in cartesian or spherically adapted
     # atomic basis functions
@@ -262,6 +278,7 @@ def read_mos(mocoef_file, in_cart, basis):
     # copy orbitals into gam_orb
     gam_orb = moinfo.Orbitals(nao_cart, n_mos)
     gam_orb.mo_vectors = turb_orb_cart
+    gam_orb.occ = turb_occ
 
     # construct mapping array from TURBOMOLE to GAMESS
     turb_gam_map, scale_turb, scale_gam = basis.construct_map(ao_ordr, ao_norm)
