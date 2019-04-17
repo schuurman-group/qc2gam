@@ -1,10 +1,8 @@
-# 
-# A set of standard structures to store basis set
-# of MO information
-#
-
+"""
+A set of standard structures to store basis set
+of MO information
+"""
 import os
-import math
 import numpy as np
 
 a_symbols       = [' H','HE',
@@ -17,7 +15,7 @@ a_numbers       = [ '1.0', '2.0',
 
 ang_mom_sym     = ['S','P','D','F','G','H','I']
 
-nfunc_cart      = [1, 3, 6, 10] 
+nfunc_cart      = [1, 3, 6, 10]
 
 nfunc_sph       = [1, 3, 5, 7]
 
@@ -36,14 +34,11 @@ ao_norm         = [[1.],
 au2ang          = 0.529177249
 
 
-# converts orbitals from spherical to cartesian
-# AO basis
 def sph2cart(basis, mo_sph, s2c):
     """Converts orbitals from spherical to cartesian AO basis. Assumes
-       input orbitals are numpy array"""
-
-    (nao_sph, nmo) = mo_sph.shape
-    [l_cart, l_sph] = basis.ang_mom_lst()
+    input orbitals are numpy array."""
+    nao_sph, nmo = mo_sph.shape
+    l_cart, l_sph = basis.ang_mom_lst()
 
     orb_trans = [[] for i in range(nmo)]
     iao_sph   = 0
@@ -58,17 +53,15 @@ def sph2cart(basis, mo_sph, s2c):
         iao_sph  += nfunc_sph[lval]
 
     if iao_sph != basis.n_bf_sph:
-        sys.exit('Error in sph2cart: '+str(iao_sph)+'!='+str(basis.n_bf_sph))
+        raise ValueError('Error in sph2cart: {:d} '.format(iao_sph) +
+                         '!= {:d}'.format(basis.n_bf_sph))
 
-    mo_cart      = np.array(orb_trans).T
-    return mo_cart
+    return np.array(orb_trans).T
 
-# wrapper for all requisite data about an atom
-class atom:
-    """Documentation to come"""
 
+class Atom:
+    """Wrapper for all requisite data about an atom."""
     def __init__(self, label, coords=None):
-        """Documentation to come"""
         # atomic symbol
         self.symbol    = label
 
@@ -76,7 +69,7 @@ class atom:
         try:
             self.number = a_numbers[a_symbols.index(self.symbol)]
         except:
-            print('Atom: '+str(label)+' not found,'+ 
+            print('Atom: '+str(label)+' not found,'+
                   'setting atomic number to \'0\'\n')
             self.number = '0.0'
 
@@ -86,112 +79,114 @@ class atom:
         else:
             self.coords = coords
 
-    # define the coordinates of the atom
     def set_coords(self, coords):
-        """Documentation to come"""
+        """Defines the coordinates of the atom."""
         self.coords = coords
 
-    # print the atom in GAMESS file format
     def print_atom(self, file_handle):
-        """Documentation to come"""
+        """Prints the atom in GAMESS file format."""
         ofmt   = ('{:2s}'+'{:>5s}'+
                   ''.join('{:18.10f}' for i in range(3))+'\n')
-        w_data = [self.symbol,self.number] + self.coords
+        w_data = [self.symbol, self.number] + self.coords
         file_handle.write(ofmt.format(*w_data))
-            
 
-# class to hold geometry information
-class geom:
-    """Documentation to come"""
 
+class Geom:
+    """Class to hold geometry information."""
     def __init__(self, atoms=None):
-        """Documentation to come"""
         # if atoms is None, initialize empty atom list
         if atoms is None:
-            self.atoms = []
+            self.atoms = np.array([], dtype=object)
         else:
-            self.atoms = atoms
+            self.atoms = np.array(atoms)
+        self.atom_map = np.arange(self.natoms())
 
     def add_atom(self, atom):
-        """Documentation to come"""
-        self.atoms.append(atom)
-        return
+        """Adds an atom to the geometry."""
+        nat = self.natoms()
+        self.atoms = np.hstack((self.atoms, atom))
+        self.atom_map = np.hstack((self.atom_map, nat))
 
     def natoms(self):
-        """Documentation to come"""
-        return len(self.atoms)   
+        """Gets the number of atoms."""
+        return len(self.atoms)
+
+    def reorder(self, other_geom):
+        """Reorders a geometry to match another geometry and keeps
+        the mapping to use on mos."""
+        fmt = '{:10.4e}{:10.4e}{:10.4e}'
+        scoords = [fmt.format(*atm.coords) for atm in self.atoms]
+        ocoords = [fmt.format(*atm.coords) for atm in other_geom.atoms]
+        self.atom_map = self._find_map(ocoords, scoords)
+        self.atoms = self.atoms[self.atom_map]
 
     def print_geom(self, file_handle):
-        """Prints geometry in GAMESS format"""
+        """Prints geometry in GAMESS format."""
         for i in range(self.natoms()):
             self.atoms[i].print_atom(file_handle)
-  
-# wrapper to hold information about the orbitals
-class orbitals:
-    """Documentation to come"""
 
+    def _find_map(self, arr1, arr2):
+        """Finds a map between two arrays."""
+        o1 = np.argsort(arr1)
+        o2 = np.argsort(arr2)
+        q = np.empty_like(o1)
+        q[o1] = np.arange(len(o1))
+        return o2[q]
+
+
+class Orbitals:
+    """Wrapper to hold information about the orbitals."""
     def __init__(self, n_aos, n_mos):
-        """Documentation to come"""
         # number of AOs
         self.naos       = n_aos
         # number of MOs
         self.nmos       = n_mos
         # matrix holding MOs
-        self.mo_vectors = np.zeros((n_aos,n_mos),dtype=float)
+        self.mo_vectors = np.zeros((n_aos, n_mos), dtype=float)
+        # vector holding occupations
+        self.occ        = None
 
-    # add an orbital to the end of the list (i.e. at first column with norm==0
     def add(self, mo_vec):
-        """Documentation to come"""
-
+        """Adds an orbital to the end of the list (i.e. at first column
+        with norm==0)"""
         # only add orbital if the number of aos is correct
         if len(mo_vec) != self.naos:
             print("Cannot add orbital, wrong number of naos: "+
                    str(len(mo_vec))+"!="+str(self.naos))
-            return
+            return None
 
         i = 0
         while(np.linalg.norm(self.mo_vectors[:,i]) > 1.e-10):
             i += 1
         self.mo_vectors[:,i] = mo_vec
-        return
 
-   # insert an orbital
     def insert(self, mo_vec, mo_i):
-        """Documentation to come"""
+        """Inserts an orbital."""
         self.mo_vectors = np.insert(self.mo_vectors,mo_i,mo_vec,axis=1)
-        return
 
-    # delete an orbital
     def delete(self, mo_i):
-        """Documentation to come"""
+        """Deletes an orbital."""
         self.mo_vectors = np.delete(self.mo_vectors,mo_i,axis=1)
-        return
 
-    # scale each MO by the vector fac_vec
     def scale(self, fac_vec):
-        """scale each MO by the vector fac_vec"""
+        """Scales each MO by the vector fac_vec."""
         scale_fac       = np.array(fac_vec)
         old_mos         = self.mo_vectors.T
         new_mos         = np.array([mo * scale_fac for mo in old_mos]).T
         self.mo_vectors = new_mos
 
-    # re-sort mos according to a map array
     def sort(self, map_lst):
-        """re-sort the MOs, ordering the AO indices via map_lst"""
+        """Re-sorts the MOs, ordering the AO indices via map_lst."""
         for i in range(self.nmos):
             vec_srt = self.mo_vectors[map_lst,i]
-            self.mo_vectors[:,i] = vec_srt 
-        return
+            self.mo_vectors[:,i] = vec_srt
 
-    # take the norm of an orbital
     def norm(self, mo_i):
-        """Documentation to come"""
+        """Takes the norm of an orbital."""
         np.linalg.norm(self.mo_vectors[:,mo_i])
-        return
 
-    # print orbitals in gamess style VEC format
     def print_orbitals(self, file_name, n_orb=None):
-        """Documentation to come"""
+        """Prints orbitals in gamess style VEC format."""
         # default is to print all the orbitals
         if n_orb is None:
             n_orb = self.nmos
@@ -203,33 +198,42 @@ class orbitals:
                 self.print_movec(mo_file, i)
             mo_file.write(' $END\n')
 
-        return
+    def print_occ(self, file_name, n_orb=None):
+        """Prints orbital occupations."""
+        if n_orb is None:
+            n_orb = self.nmos
 
-    # print an orbital vector
+        n_col = 5
+        n_row = int(np.ceil(n_orb / n_col))
+        with open(file_name, 'a') as mo_file:
+            mo_file.write(' $OCCNO\n')
+            for i in range(n_row):
+                n_end = min(n_orb, 5*(i+1))
+                oc_row = (n_end - 5*i)*'{:16.10f}' + '\n'
+                r_data = self.occ[5*i:n_end]
+                mo_file.write(oc_row.format(*r_data))
+            mo_file.write(' $END\n')
+
     def print_movec(self, file_handle, mo_i):
-        """Documentation to come"""
+        """Prints an orbital vector."""
         n_col  = 5 # this is set by GAMESS format
-        n_row  = int(math.ceil(self.naos/n_col))
+        n_row  = int(np.ceil(self.naos / n_col))
         mo_lab = (mo_i+1) % 100
- 
-        def mo_row(n):
-            return ('{:>2d}'+' '+'{:>2d}'+''.join('{:15.8E}' for i in range(n))+'\n')
 
         for i in range(n_row):
             r_data = [mo_lab, i+1]
-            n_coef  = min(self.naos,5*(i+1)) - 5*i
-            r_data.extend(self.mo_vectors[5*i:min(self.naos,5*(i+1)),mo_i].tolist())
-            file_handle.write(mo_row(n_coef).format(*r_data))
-        return
+            n_end = min(self.naos,5*(i+1))
+            mo_row = '{:>2d}{:>3d}' + (n_end - 5*i)*'{:15.8E}' + '\n'
+            r_data += self.mo_vectors[5*i:n_end,mo_i].tolist()
+            file_handle.write(mo_row.format(*r_data))
 
-# an object to hold information about a single basis function
-# including angular momentum, exponents and contraction coefficients
-class basis_function:
-    """Documentation to come"""
 
+class BasisFunction:
+    """An object to hold information about a single basis function
+    including angular momentum, exponents and contraction coefficients."""
     def __init__(self, ang_mom):
         # angular momentum of basis function
-        self.ang_mom = ang_mom 
+        self.ang_mom = ang_mom
         # text symbol of the angular momentum shell
         self.ang_sym = ang_mom_sym[self.ang_mom]
         # number of primitives in basis
@@ -240,14 +244,13 @@ class basis_function:
         self.coefs   = []
 
     def add_primitive(self, expo, coef):
-        """Documentation to come"""
+        """Adds a primitive to the basis function."""
         self.exps.extend([expo])
         self.coefs.extend([coef])
         self.n_prim += 1
-        return
 
     def print_basis_function(self, file_handle):
-        """Documentation to come"""
+        """Prints the basis function in gamess format."""
         ofmt1 = ('{:1s}'+'{:>6d}'+'\n')
         ofmt2 = ('{:>3d}'+'{:>15.7f}'+'{:>23.7f}'+'\n')
 
@@ -256,11 +259,10 @@ class basis_function:
         for i in range(self.n_prim):
             w_data = [i+1, self.exps[i],self.coefs[i]]
             file_handle.write(ofmt2.format(*w_data))
-        return
 
-# contains the basis set information for a single atom
-class basis_set:
-    """Documentation to come"""
+
+class BasisSet:
+    """Contains the basis set information for a single atom."""
     def __init__(self, label, geom):
         # string label of basis set name
         self.label       = label
@@ -271,16 +273,13 @@ class basis_set:
         # total number of spherical functions
         self.n_bf_sph    = 0
         # total number of contractions for atom i
-        self.n_bf        = [0 for i in range(self.geom.natoms())]       
+        self.n_bf        = [0 for i in range(self.geom.natoms())]
         # list of basis function objects
         self.basis_funcs = [[] for i in range(self.geom.natoms())]
 
-    # construct an array of the ang_mom of each basis function in 
-    # GAMESS ordering -- returns both cartesian array and spherically
-    # adapted array
     def ang_mom_lst(self):
-        """Returns an array containing the value of angular momentum of the 
-           corresponding at that index"""
+        """Returns an array containing the value of angular momentum of the
+        corresponding at that index."""
         ang_mom_cart = []
         ang_mom_sph  = []
 
@@ -290,11 +289,11 @@ class basis_set:
                 ang_mom_cart.extend([ang_mom for k in range(nfunc_cart[ang_mom])])
                 ang_mom_sph.extend([ang_mom for k in range(nfunc_sph[ang_mom])])
 
-        return[ang_mom_cart, ang_mom_sph]
+        return ang_mom_cart, ang_mom_sph
 
-    # add a basis function to the basis_set -- always keeps "like" angular 
-    # momentum functions together
     def add_function(self, atom_i, bf):
+        """Adds a basis function to the basis_set -- always keeps "like"
+        angular momentum functions together."""
         ang_mom = bf.ang_mom
         if len(self.basis_funcs[atom_i])>0:
             bf_i = 0
@@ -306,28 +305,23 @@ class basis_set:
             bf_i = len(self.basis_funcs[atom_i])
 
         self.basis_funcs[atom_i].insert(bf_i, bf)
-        self.n_bf[atom_i]   += 1
-        self.n_bf_cart      += nfunc_cart[bf.ang_mom]
-        self.n_bf_sph       += nfunc_sph[bf.ang_mom]
-        return
+        self.n_bf[atom_i] += 1
+        self.n_bf_cart    += nfunc_cart[bf.ang_mom]
+        self.n_bf_sph     += nfunc_sph[bf.ang_mom]
 
-    # construct a mapping between the ordering of basis functions
-    # in an arbitrary order and the 'canonical' GAMESS order
-    # mapping also assumes 'canonical' cartesian representation
-    # of AOs
     def construct_map(self, orig_ordr, orig_norm):
-        """constructs a map array to convert the nascent AO ordering to
-           GAMESS AO ordering. Also returns the normalization factors
-           for the nascent and corresponding GAMESS-ordered AO basis"""
+        """Constructs a map array to convert the nascent AO ordering to
+        GAMESS AO ordering. Also returns the normalization factors
+        for the nascent and corresponding GAMESS-ordered AO basis."""
         map_arr       = []
         scale_nascent = []
         scale_gam     = []
-        ao_map        = [[orig_ordr[i].index(ao_ordr[i][j]) 
-                         for j in range(nfunc_cart[i])] 
+        ao_map        = [[orig_ordr[i].index(ao_ordr[i][j])
+                         for j in range(nfunc_cart[i])]
                          for i in range(len(ao_ordr))]
 
         nf_cnt = 0
-        for i in range(self.geom.natoms()):
+        for i in self.geom.atom_map:
             for j in range(len(self.basis_funcs[i])):
                 ang_mom = self.basis_funcs[i][j].ang_mom
                 nfunc   = nfunc_cart[ang_mom]
@@ -337,12 +331,11 @@ class basis_set:
                 scale_gam.extend([1./ao_norm[ang_mom][k] for k in range(nfunc)])
                 nf_cnt += nfunc
 
-        return [map_arr, scale_nascent, scale_gam]
+        return map_arr, scale_nascent, scale_gam
 
-
-    # print  the data section of a GAMESS style input file
     def print_basis_set(self, file_name):
-    
+        """Print the data section of a GAMESS style input file."""
+
         # if file doesn't exist, create it. Overwrite if it does exist
         with open(file_name, 'x') as dat_file:
             dat_file.write(' $DATA\n'+
@@ -352,11 +345,8 @@ class basis_set:
             for i in range(self.geom.natoms()):
                 self.geom.atoms[i].print_atom(dat_file)
                 for j in range(self.n_bf[i]):
-                    self.basis_funcs[i][j].print_basis_function(dat_file)       
+                    self.basis_funcs[i][j].print_basis_function(dat_file)
                 # each atomic record ends with an empty line
                 dat_file.write('\n')
 
             dat_file.write(' $END\n')
-
-        return
-
