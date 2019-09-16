@@ -34,7 +34,7 @@ def process_arguments():
         mo_file = 'mocoef'
         basis_file = 'daltaoin'
     else:
-        raise ValueError('input style '+str(inp)+' not recognized.')
+        raise ValueError('input style '+str(input_style)+' not recognized.')
 
     # read the command line arguments
     geom_file  = get_arg('-geom', geom_file)
