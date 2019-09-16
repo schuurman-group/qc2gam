@@ -291,7 +291,7 @@ def parse_ci_file(ci_file, is_cipc):
         for line in cipcls:
             # read the number of frozen orbitals (if cipcls)
             if 'frozen orbital =' in line and is_cipc:
-                l_arr = line.strip().split()
+                l_arr = line.split()
                 ndocc = len(l_arr)-3
                 continue
 
@@ -302,7 +302,7 @@ def parse_ci_file(ci_file, is_cipc):
 
             # read in the number of doubly occupied orbitals (for mcpcls)
             if read_docc:
-                l_arr = line.strip().split()
+                l_arr = line.split()
                 if len(l_arr) == 0:
                     read_docc = False
                     continue
@@ -319,7 +319,7 @@ def parse_ci_file(ci_file, is_cipc):
 
             # read a csf line
             if parse_line:
-                l_arr = line.strip().split()
+                l_arr = line.replace(':','').split()
 
                 # stopping criteria for cipcls
                 if 'csfs were printed' in line:
@@ -347,7 +347,7 @@ def print_csf_list(n_occ, n_extl, csf_list):
                            ''.join('{:4d}:{:2d}' for i in range(n_extl))+
                            '\n')
 
-    print("n_occ="+str(n_occ)+"\n")
+    #print("n_occ="+str(n_occ)+"\n")
     for state in range(len(csf_list)):
         dat_file = open('csf'+str(state+1), 'x')
 
@@ -355,7 +355,7 @@ def print_csf_list(n_occ, n_extl, csf_list):
             data = [csf[0]]
             ext_vec = [0] * (2*n_extl)
             n_ext = int((len(csf[1]) -  n_occ) / 2)
-            print("n_extl, csf, n_ext="+str(n_extl)+" / "+str(csf)+" / "+str(n_ext)+"\n")
+            #print("n_extl, csf, n_ext="+str(n_extl)+" / "+str(csf)+" / "+str(n_ext)+"\n")
             for i in range(n_ext):
                 ext_vec[2*i]   = csf[1][n_occ+n_ext+i]
                 ext_vec[2*i+1] = csf[1][n_occ+i]
@@ -372,11 +372,10 @@ def parse_ci_line(is_cipc, ndocc, l_arr):
     csf_vec = [3] * ndocc
 
     if is_cipc:
-       nextl   = int((len(l_arr) - 5)/3)
-       str_ind = 4 + 3*nextl
+       nextl   = int((len(l_arr) - 5)/2)
+       str_ind = 4 + 2*nextl
        nact    = len(l_arr[str_ind])-nextl
        nintl   = ndocc + nact
-
        # first add internal orbitals
        csf_vec.extend([int(l_arr[str_ind][i+nextl]) for i in range(nact)])
 
@@ -384,7 +383,7 @@ def parse_ci_line(is_cipc, ndocc, l_arr):
        csf_vec.extend([0] * (2*nextl))
        for i in range(nextl):
            csf_vec[nintl+i]       = int(l_arr[str_ind][i])
-           csf_vec[nintl+nextl+i] = int(l_arr[3*(i+2)])
+           csf_vec[nintl+nextl+i] = int(l_arr[2*i+5])
 
     else:
        csf_vec.extend([int(l_arr[3][i]) for i in range(len(l_arr[3]))])
