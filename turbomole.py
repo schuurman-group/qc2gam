@@ -94,16 +94,16 @@ def read_geom(geom_file):
     with open(geom_file, 'r') as turbo_coord:
         gfile = turbo_coord.readlines()
 
+    # parse geometry
     i = 0
-    while(gfile[i].split()[0] != '$coord'):
-        i+=1
+    while gfile[i].split()[0] != '$coord':
+        i += 1
 
-    atoms = []
-    i+=1
-    while('$' not in gfile[i]):
+    i += 1
+    while '$' not in gfile[i]:
         gstr   = gfile[i].split() # format = coords, asym
         asym   = gstr[3].upper().rjust(2)
-        coords = [float(gstr[i])*moinfo.au2ang for i in range(3)]
+        coords = [float(gstr[j])*moinfo.au2ang for j in range(3)]
         geom.add_atom(moinfo.Atom(asym,coords))
         i     += 1
 
@@ -126,14 +126,14 @@ def read_basis(basis_file, geom):
 
     # look for start of basis section
     i = 0
-    while(bfile[i].split()[0] != '$basis'):
+    while bfile[i].split()[0] != '$basis':
         i += 1
 
     # iterate over the atom types
     b_set     = ''
     a_sym     = ''
     sec_start = False
-    i         += 1
+    i        += 1
     while True:
         line = bfile[i].split()
 
@@ -175,7 +175,7 @@ def read_basis(basis_file, geom):
         bfunc            = moinfo.BasisFunction(ang_mom)
         for j in range(int(nprim)):
             i += 1
-            [exp, coef]  = bfile[i].split()
+            exp, coef = bfile[i].split()
             bfunc.add_primitive(float(exp), float(coef))
         for atom in a_lst:
             basis.add_function(atom, bfunc)

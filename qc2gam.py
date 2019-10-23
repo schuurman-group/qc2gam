@@ -27,19 +27,23 @@ def process_arguments():
     input_style = get_arg('-input', None)
     if input_style == 'turbomole':
         geom_file = 'coord'
-        mo_file = 'mos'
         basis_file = 'basis'
+        mo_file = 'mos'
     elif input_style == 'columbus':
         geom_file = 'geom'
-        mo_file = 'mocoef'
         basis_file = 'daltaoin'
+        mo_file = 'mocoef'
+    elif input_style == 'molden':
+        geom_file = None
+        basis_file = None
+        mo_file = 'mos.molden'
     else:
         raise ValueError('input style '+str(input_style)+' not recognized.')
 
     # read the command line arguments
     geom_file  = get_arg('-geom', geom_file)
-    mo_file    = get_arg('-mos', mo_file)
     basis_file = get_arg('-basis', basis_file)
+    mo_file    = get_arg('-mos', mo_file)
     gorder     = get_arg('-ordr', None)
     ci_file    = get_arg('-ci', None)
     out_file   = get_arg('-output', 'mos.dat')

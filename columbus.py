@@ -93,11 +93,11 @@ def read_geom(geom_file):
     with open(geom_file, 'r') as col_geom:
         gfile = col_geom.readlines()
 
-    atoms = []
+    # parse geometry
     for i in range(len(gfile)):
         gstr   = gfile[i].split() # format = asym, anum, coords
         asym   = gstr[0].upper().rjust(2)
-        coords = [float(gstr[i])*moinfo.au2ang for i in range(2,5)]
+        coords = [float(gstr[j+2])*moinfo.au2ang for j in range(3)]
         atom_i = moinfo.Atom(asym, coords)
         geom.add_atom(atom_i)
 
@@ -156,6 +156,7 @@ def read_basis(basis_file, geom):
                     coefs = exp_con[1:]
                     for n in range(n_con):
                         b_funcs[n].add_primitive(expon, coefs[n])
+
                 for m in range(n_atm):
                     for n in range(n_con):
                         basis.add_function(atm_cnt+m, b_funcs[n])
