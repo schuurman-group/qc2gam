@@ -6,8 +6,8 @@ import numpy as np
 import moinfo
 
 # Molden orbital ordering (in cartesians)
-# s px py pz dxx dxy dxz dyy dyz dzz
-# fxxx fxxy fxxz fxyy fxyz fxzz fyyy fyyz fyzz fzzz
+# s px py pz dxx dyy dzz dxy dxz dyz
+# fxxx fyyy fzzz fxyy fxxy fxxz fxzz fyzz fyyz fxyz
 ao_ordr = [['s'],
            ['px', 'py', 'pz'],
            ['dxx', 'dyy', 'dzz', 'dxy', 'dxz', 'dyz'],
@@ -16,7 +16,8 @@ ao_ordr = [['s'],
 
 ao_norm = [[1.],
            [1.,1.,1.],
-           [1.,1.,1.,np.sqrt(3.),np.sqrt(3.),np.sqrt(3.)],
+           [np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),
+            np.sqrt(3.),np.sqrt(3.)],
            [np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
             np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
             np.sqrt(15.),np.sqrt(15.)]]
