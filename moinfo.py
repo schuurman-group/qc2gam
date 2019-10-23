@@ -175,11 +175,16 @@ class Orbitals:
         new_mos         = np.array([mo * scale_fac for mo in old_mos]).T
         self.mo_vectors = new_mos
 
-    def sort(self, map_lst):
+    def sort_aos(self, map_lst):
         """Re-sorts the MOs, ordering the AO indices via map_lst."""
         for i in range(self.nmos):
             vec_srt = self.mo_vectors[map_lst,i]
             self.mo_vectors[:,i] = vec_srt
+
+    def sort_mos(self, map_lst):
+        """Re-sorts the MO ordering"""
+        vec_srt = self.mo_vectors[:,map_lst]
+        self.mo_vectors = vec_srt
 
     def norm(self, mo_i):
         """Takes the norm of an orbital."""
