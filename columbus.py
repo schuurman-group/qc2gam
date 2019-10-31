@@ -228,13 +228,13 @@ def read_mos(mocoef_file, in_cart, basis):
     gam_orb.occ = col_occ
 
     # construct mapping array from COLUMBUS to GAMESS
-    dalt_gam_map, scale_col, scale_gam = basis.construct_map(ao_ordr, ao_norm)
+    col_gam_map, scale_col, scale_gam = basis.construct_map(ao_ordr, ao_norm)
 
-    # remove the dalton normalization factors
+    # remove the COLUMBUS normalization factors
     gam_orb.scale(scale_col)
 
     # re-sort orbitals to GAMESS ordering
-    gam_orb.sort(dalt_gam_map)
+    gam_orb.sort(col_gam_map)
 
     # apply the GAMESS normalization factors
     gam_orb.scale(scale_gam)

@@ -16,42 +16,40 @@ ao_ordr = [['s'],
 
 ao_norm = [[1.],
            [1.,1.,1.],
-           [np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),np.sqrt(3.),
-            np.sqrt(3.),np.sqrt(3.)],
-           [np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
-            np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),np.sqrt(15.),
-            np.sqrt(15.),np.sqrt(15.)]]
+           [1.,1.,1.,np.sqrt(3.),np.sqrt(3.),np.sqrt(3.)],
+           [1.,1.,1.,np.sqrt(5.),np.sqrt(5.),np.sqrt(5.),
+                     np.sqrt(5.),np.sqrt(5.),np.sqrt(5.),np.sqrt(15.)]]
 
 # how to convert from spherical to cartesian basis functions
-# (in molden ordering)
+# (in molden ordering) # NOTE: f-functions and dxx, dyy, dzz are incorrect!
 # s -> s | px -> px | py -> py | pz -> pz
 # d ordering: d0, d1+, d1-, d2+, d2-
 # dxx ->  -d0 / 6 + d2+ / 2
+# dyy -> -d0 / 6 - d2+ / 2
+# dzz ->  d0 / 3
 # dxy ->  d2-
 # dxz ->  d1+
-# dyy -> -d0 / 6 - d2+ / 2
 # dyz ->  d1-
-# dzz ->  d0 / 3
 # f ordering: f0, f1+, f1-, f2+, f2-, f3+, f3-
 # fxxx -> -3*(f1+ / 20 + f3+ / 4)
-# fxxy -> f3- / 4 - f1- / 20
-# fxxz -> 3*f0 / 10 + f2+ / 2
-# fxyy -> 3*f3+ / 4 - f1+ / 20
-# fxyz -> f2-
-# fxzz -> f1+ / 5
 # fyyy -> -3*f1- / 20 - f3- / 4
-# fyyz -> 3*f0 / 10 - f2+ / 2
-# fyzz -> f1- / 5
 # fzzz -> -3*f0 / 5
+# fxyy -> -f1+ / 20 + 3*f3+ / 4
+# fxxy -> -f1- / 20 + f3- / 4
+# fxxz -> 3*f0 / 10 + f2+ / 2
+# fxzz -> f1+ / 5
+# fyzz -> f1- / 5
+# fyyz -> 3*f0 / 10 - f2+ / 2
+# fxyz -> f2-
 sph2cart = [
     [[[0], [1.]]],                           # conversion for s orbitals
     [[[0], [1.]], [[1], [1.]], [[2], [1.]]], # conversion for p orbitals
     [[[0, 3], [-1./6., 1./2.]],              # conversion for d orbitals
      [[0, 3], [-1./6., -1./2.]],
      [[0], [1./3.]],
-     [[4], [1.]],
-     [[1], [1.]],
-     [[2], [1.]]],
+     [[4], [1.]],  #<- confirmed
+     [[1], [1.]],  #<- confirmed
+     [[2], [1.]]], #<- confirmed
     [[[1, 5], [-3./20., -3./4.]],            # conversion for f orbitals
      [[2, 6], [-3./20., -1./4.]],
      [[0], [-3./5.]],
@@ -143,10 +141,22 @@ def read_basis(basis_file, geom):
 
     nline = len(bfile)
 
-    # default is to run in spherically adapted functions
-    # can add for cartesians later (in Molden, this can be
-    # done by searching for lines [6D], [10F]
-    in_cartesians = False
+    # default for Molden is to run in with cartesians.
+    # Molden also supports mixed spherical-cartesian bases,
+    # but for now we don't
+    in_cartesians = True
+    for i in range(nline):
+        if '[5D]' in bfile[i].upper():
+            in_cartesians = False
+            break
+        elif '[5D7F]' in bfile[i].upper():
+            in_cartesians = False
+            break
+        elif '[5D10F]' in bfile[i].upper():
+            raise ValueError('Mixed spherical-cartesian bases not supported')
+        elif '[7F]' in bfile[i].upper():
+            # this should only be raised if [5D] is not present
+            raise ValueError('Mixed spherical-cartesian bases not supported')
 
     # look for start of basis section
     for i in range(nline):
@@ -255,6 +265,7 @@ def read_mos(mocoef_file, in_cart, basis):
     # to cartesians
     mold_orb = np.array(raw_orbs).T
     if not in_cart:
+        raise ValueError('sph2cart values not implemented yet')
         mold_orb_cart = moinfo.sph2cart(basis, mold_orb, sph2cart)
         nao_cart      = mold_orb_cart.shape[0]
     else:
@@ -269,7 +280,7 @@ def read_mos(mocoef_file, in_cart, basis):
     # construct mapping array from TURBOMOLE to GAMESS
     mold_gam_map, scale_mold, scale_gam = basis.construct_map(ao_ordr, ao_norm)
 
-    # remove the dalton normalization factors
+    # remove the molden normalization factors
     gam_orb.scale(scale_mold)
 
     # re-sort orbitals to GAMESS ordering

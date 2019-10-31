@@ -115,7 +115,7 @@ def read_basis(basis_file, geom):
     # create basis set object
     basis = moinfo.BasisSet('unknown', geom)
 
-    # slurp up daltaoin file
+    # slurp up turbomole basis file
     with open(basis_file, 'r') as turbo_basis:
         bfile = turbo_basis.readlines()
 
@@ -283,7 +283,7 @@ def read_mos(mocoef_file, in_cart, basis):
     # construct mapping array from TURBOMOLE to GAMESS
     turb_gam_map, scale_turb, scale_gam = basis.construct_map(ao_ordr, ao_norm)
 
-    # remove the dalton normalization factors
+    # remove the turbomole normalization factors
     gam_orb.scale(scale_turb)
 
     # re-sort orbitals to GAMESS ordering
