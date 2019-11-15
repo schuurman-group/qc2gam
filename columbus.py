@@ -342,7 +342,11 @@ def parse_ci_file(ci_file, is_cipc):
             if 'map' in line and is_cipc:
                 mapraw = '' 
                 while 'mu' not in line:
-                    mapraw += ' '+line.lstrip().rstrip()
+                    line_str = line.replace('map(*)=','').lstrip().rstrip()
+                    npad     = 0
+                    if len(line_str)%3 != 0:
+                        npad     = 3 - len(line_str) % 3
+                    mapraw  += line_str.rjust(len(line_str)+npad)
                     line = cipcls.readline()
                 orb_str = mapraw.replace('map(*)=','')
                 orb_str = ' '+orb_str.lstrip()
