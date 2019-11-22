@@ -24,9 +24,9 @@ ao_norm = [[1.],
 # (in molden ordering) # NOTE: f-functions and dxx, dyy, dzz are incorrect!
 # s -> s | px -> px | py -> py | pz -> pz
 # d ordering: d0, d1+, d1-, d2+, d2-
-# dxx ->  -d0 / 6 + d2+ / 2
-# dyy -> -d0 / 6 - d2+ / 2
-# dzz ->  d0 / 3
+# dxx ->  -d0 / 2 + sqrt(3.) * d2+ / 2
+# dyy -> -d0 / 2 - sqrt(3.) * d2+ / 2
+# dzz ->  d0
 # dxy ->  d2-
 # dxz ->  d1+
 # dyz ->  d1-
@@ -44,12 +44,12 @@ ao_norm = [[1.],
 sph2cart = [
     [[[0], [1.]]],                           # conversion for s orbitals
     [[[0], [1.]], [[1], [1.]], [[2], [1.]]], # conversion for p orbitals
-    [[[0, 3], [-1./6., 1./2.]],              # conversion for d orbitals
-     [[0, 3], [-1./6., -1./2.]],
-     [[0], [1./3.]],
-     [[4], [1.]],  #<- confirmed
-     [[1], [1.]],  #<- confirmed
-     [[2], [1.]]], #<- confirmed
+    [[[0, 3], [-1./2., np.sqrt(3.)/2.]],              # conversion for d orbitals
+     [[0, 3], [-1./2., -np.sqrt(3.)/2.]],
+     [[0], [1.]],
+     [[4], [1.]], 
+     [[1], [1.]],  
+     [[2], [1.]]],
     [[[1, 5], [-3./20., -3./4.]],            # conversion for f orbitals
      [[2, 6], [-3./20., -1./4.]],
      [[0], [-3./5.]],
@@ -265,7 +265,7 @@ def read_mos(mocoef_file, in_cart, basis):
     # to cartesians
     mold_orb = np.array(raw_orbs).T
     if not in_cart:
-        raise ValueError('sph2cart values not implemented yet')
+#        raise ValueError('sph2cart values not implemented yet')
         mold_orb_cart = moinfo.sph2cart(basis, mold_orb, sph2cart)
         nao_cart      = mold_orb_cart.shape[0]
     else:
