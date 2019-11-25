@@ -37,16 +37,16 @@ ao_norm = [[1.],
 # dyz ->  d1-
 # dzz -> 2. * d0
 # f ordering: f3-, f2-, f1-, f0, f1+, f2+, f3+
-# fxxx -> -f1+ - f3+/15.
-# fxxy -> sqrt(2)*f3- - f1-
-# fxxz -> f0 + f1
-# fxyy -> -f1 + f3
-# fxyz -> f2-
-# fxzz -> 4 * f1
-# fyyy -> -sqrt(2)*f3- - f1-
-# fyyz -> f0 - f2
-# fyzz -> 4 * f1-
-# fzzz -> -2 * f0 / 3
+# fxxx ->  f1+
+# fxxy ->  (sqrt(3)/2)*f3- - (3/(2*sqrt(5))*f1-
+# fxxz -> -(3/(2*sqrt(5))*f0  + (sqrt(3)/2)*f2+
+# fxyy -> -(3/(2*sqrt(5))*f1+ + (sqrt(3)/2)*f3+
+# fxyz ->  f2-
+# fxzz -> -(3/(2*sqrt(5))*f1+ - (sqrt(3)/2)*f3+
+# fyyy ->  f1-
+# fyyz -> -(3/(2*sqrt(5))*f0  - (sqrt(3)/2)*f2+
+# fyzz -> -(sqrt(3)/2)*f3- - (3/(2*sqrt(5))*f1-
+# fzzz -> f0
 sph2cart = [
     [[[0], [1.]]],                           # conversion for s orbitals
     [[[0], [1.]], [[1], [1.]], [[2], [1.]]], # conversion for p orbitals
@@ -56,16 +56,16 @@ sph2cart = [
      [[2, 4], [-1., -1.]],
      [[1], [1.]],
      [[2], [2.]]],
-    [[[4, 6], [-1., -1./15.]],               # conversion for f orbitals
-     [[0, 2], [np.sqrt(2.), -1.]],
-     [[3, 5], [1., 1.]],
-     [[4, 6], [-1., 1.]],
+    [[[4, 6], [2.*np.sqrt(2./3.), 0.]],               # conversion for f orbitals
+     [[0, 2], [np.sqrt(6.), -np.sqrt(6.)]],
+     [[3, 5], [-1., 1.]],
+     [[4, 6], [-np.sqrt(6.), np.sqrt(2./3.)]],
      [[1], [1.]],
-     [[4], [4.]],
-     [[0, 2], [-np.sqrt(2.), -1.]],
-     [[3, 5], [1., -1.]],
-     [[2], [4.]],
-     [[3], [-2./3.]]]
+     [[4, 6], [-np.sqrt(6.), -np.sqrt(2./3.)]],
+     [[0, 2], [0, 2.*np.sqrt(2./3.)]],
+     [[3, 5], [-1., -1.]],
+     [[0, 2], [-np.sqrt(6.), -np.sqrt(6.)]],
+     [[3, 5], [2./3., 0.]]]
             ]
 
 orb_map = None
