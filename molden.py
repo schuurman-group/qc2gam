@@ -21,7 +21,7 @@ ao_norm = [[1.],
                      np.sqrt(5.),np.sqrt(5.),np.sqrt(5.),np.sqrt(15.)]]
 
 # how to convert from spherical to cartesian basis functions
-# (in molden ordering) # NOTE: f-functions and dxx, dyy, dzz are incorrect!
+# (in molden ordering)
 # s -> s | px -> px | py -> py | pz -> pz
 # d ordering: d0, d1+, d1-, d2+, d2-
 # dxx ->  -d0 / 2 + sqrt(3.) * d2+ / 2
@@ -31,26 +31,26 @@ ao_norm = [[1.],
 # dxz ->  d1+
 # dyz ->  d1-
 # f ordering: f0, f1+, f1-, f2+, f2-, f3+, f3-
-# fxxx -> -f1+ 
-# fyyy -> -f1- 
+# fxxx -> -f1+
+# fyyy -> -f1-
 # fzzz -> -f0
 # fxyy -> -(3/(2*sqrt(5)))*f1+ + (sqrt(3)/2)*f3+
 # fxxy -> -(3/(2*sqrt(5)))*f1- + (sqrt(3)/2)*f3-
 # fxxz -> -(3/(2*sqrt(5)))*f0  + (sqrt(3)/2)*f2+
 # fxzz -> -(3/(2*sqrt(5)))*f1+ - (sqrt(3)/2)*f3+
-# fyzz -> -(3/(2*sqrt(5)))*f1- - (sqrt(3)/2)*f3- 
+# fyzz -> -(3/(2*sqrt(5)))*f1- - (sqrt(3)/2)*f3-
 # fyyz -> -(3/(2*sqrt(5)))*f0  - (sqrt(3)/2)*f2+
 # fxyz -> f2-
 sph2cart = [
     [[[0], [1.]]],                           # conversion for s orbitals
     [[[0], [1.]], [[1], [1.]], [[2], [1.]]], # conversion for p orbitals
-    [[[0, 3], [-1./2., np.sqrt(3.)/2.]],              # conversion for d orbitals
+    [[[0, 3], [-1./2., np.sqrt(3.)/2.]],     # conversion for d orbitals
      [[0, 3], [-1./2., -np.sqrt(3.)/2.]],
      [[0], [1.]],
-     [[4], [1.]], 
-     [[1], [1.]],  
+     [[4], [1.]],
+     [[1], [1.]],
      [[2], [1.]]],
-    [[[1, 5], [1., 0.]],            # conversion for f orbitals
+    [[[1, 5], [1., 0.]],                     # conversion for f orbitals
      [[2, 6], [1., 0.]],
      [[0], [1.]],
      [[1, 5], [-3./(2.*np.sqrt(5.)), np.sqrt(3.)/2.]],
@@ -182,13 +182,15 @@ def read_basis(basis_file, geom):
                 raise ValueError('Atomic index mismatch: '+str(iatm+1)+
                                  ', '+line[0])
         else:
-            ang_sym, nprim = line
+            ang_sym, nprim = line[:2]
             ang_mom        = moinfo.ang_mom_sym.index(ang_sym.upper())
             bfunc          = moinfo.BasisFunction(ang_mom)
             for j in range(int(nprim)):
                 i = next(it)
                 exp, coef = bfile[i].split()
-                bfunc.add_primitive(float(exp), float(coef))
+                # columbus isn't consistent, so replace D with E
+                bfunc.add_primitive(float(exp.replace('D', 'E')),
+                                    float(coef.replace('D', 'E')))
 
             basis.add_function(iatm, bfunc)
 
@@ -203,6 +205,11 @@ def read_mos(mocoef_file, in_cart, basis):
     from a spherically adapted basis to cartesians. That will come later
     though... first the easy stuff.
     """
+    # sph2cart needs to be fixed (change True to False for testing)
+    if not in_cart and True:
+        raise(ValueError, 'spherical transformation currently not available '+
+              'for molden format.')
+
     # slurp up the molden file
     with open(mocoef_file, 'r') as mos:
         mo_file = mos.readlines()
