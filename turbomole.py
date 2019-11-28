@@ -94,16 +94,16 @@ def read_geom(geom_file):
     with open(geom_file, 'r') as turbo_coord:
         gfile = turbo_coord.readlines()
 
+    # parse geometry
     i = 0
-    while(gfile[i].split()[0] != '$coord'):
-        i+=1
+    while gfile[i].split()[0] != '$coord':
+        i += 1
 
-    atoms = []
-    i+=1
-    while('$' not in gfile[i]):
+    i += 1
+    while '$' not in gfile[i]:
         gstr   = gfile[i].split() # format = coords, asym
         asym   = gstr[3].upper().rjust(2)
-        coords = [float(gstr[i])*moinfo.au2ang for i in range(3)]
+        coords = [float(gstr[j])*moinfo.au2ang for j in range(3)]
         geom.add_atom(moinfo.Atom(asym,coords))
         i     += 1
 
@@ -115,7 +115,7 @@ def read_basis(basis_file, geom):
     # create basis set object
     basis = moinfo.BasisSet('unknown', geom)
 
-    # slurp up daltaoin file
+    # slurp up turbomole basis file
     with open(basis_file, 'r') as turbo_basis:
         bfile = turbo_basis.readlines()
 
@@ -126,14 +126,14 @@ def read_basis(basis_file, geom):
 
     # look for start of basis section
     i = 0
-    while(bfile[i].split()[0] != '$basis'):
+    while bfile[i].split()[0] != '$basis':
         i += 1
 
     # iterate over the atom types
     b_set     = ''
     a_sym     = ''
     sec_start = False
-    i         += 1
+    i        += 1
     while True:
         line = bfile[i].split()
 
@@ -144,19 +144,16 @@ def read_basis(basis_file, geom):
         # ignore blank lines
         if len(line) == 0:
             i += 1
-            continue
 
         # ignore comment lines
         if line[0][0] == '#':
             i += 1
-            continue
 
         # if first string is star, either
         # beginning or ending basis section
         if line[0] == '*':
             sec_start = not sec_start
             i += 1
-            continue
 
         # if starting section, first line
         # is atom and basis set line
@@ -167,7 +164,6 @@ def read_basis(basis_file, geom):
                        for k in range(geom.natoms())])
                        if sym == a_sym.upper().rjust(2)]
             i += 1
-            continue
 
         # if we get this far, we're parsing the basis set!
         nprim, ang_sym = line
@@ -175,7 +171,7 @@ def read_basis(basis_file, geom):
         bfunc            = moinfo.BasisFunction(ang_mom)
         for j in range(int(nprim)):
             i += 1
-            [exp, coef]  = bfile[i].split()
+            exp, coef = bfile[i].split()
             bfunc.add_primitive(float(exp), float(coef))
         for atom in a_lst:
             basis.add_function(atom, bfunc)
@@ -250,7 +246,6 @@ def read_mos(mocoef_file, in_cart, basis):
         else:
             if 'occupation' in raw_line:
                 has_occ = True
-                continue
 
     if not has_occ:
         turb_occ = None
@@ -283,11 +278,11 @@ def read_mos(mocoef_file, in_cart, basis):
     # construct mapping array from TURBOMOLE to GAMESS
     turb_gam_map, scale_turb, scale_gam = basis.construct_map(ao_ordr, ao_norm)
 
-    # remove the dalton normalization factors
+    # remove the turbomole normalization factors
     gam_orb.scale(scale_turb)
 
     # re-sort orbitals to GAMESS ordering
-    gam_orb.sort(turb_gam_map)
+    gam_orb.sort_aos(turb_gam_map)
 
     # apply the GAMESS normalization factors
     gam_orb.scale(scale_gam)

@@ -56,7 +56,7 @@ sph2cart = [
      [[2, 4], [-1., -1.]],
      [[1], [1.]],
      [[2], [2.]]],
-    [[[4, 6], [2.*np.sqrt(2./3.), 0.]],               # conversion for f orbitals
+    [[[4, 6], [2.*np.sqrt(2./3.), 0.]],      # conversion for f orbitals
      [[0, 2], [np.sqrt(6.), -np.sqrt(6.)]],
      [[3, 5], [-1., 1.]],
      [[4, 6], [-np.sqrt(6.), np.sqrt(2./3.)]],
@@ -96,11 +96,11 @@ def read_geom(geom_file):
     with open(geom_file, 'r') as col_geom:
         gfile = col_geom.readlines()
 
-    atoms = []
+    # parse geometry
     for i in range(len(gfile)):
         gstr   = gfile[i].split() # format = asym, anum, coords
         asym   = gstr[0].upper().rjust(2)
-        coords = [float(gstr[i])*moinfo.au2ang for i in range(2,5)]
+        coords = [float(gstr[j+2])*moinfo.au2ang for j in range(3)]
         atom_i = moinfo.Atom(asym, coords)
         geom.add_atom(atom_i)
 
@@ -165,6 +165,7 @@ def read_basis(basis_file, geom):
                             coefs.extend(exp_con)
                     for n in range(n_con):
                         b_funcs[n].add_primitive(expon, coefs[n])
+
                 for m in range(n_atm):
                     for n in range(n_con):
                         basis.add_function(atm_cnt+m, b_funcs[n])
@@ -239,13 +240,13 @@ def read_mos(mocoef_file, in_cart, basis):
     gam_orb.occ = col_occ
 
     # construct mapping array from COLUMBUS to GAMESS
-    dalt_gam_map, scale_col, scale_gam = basis.construct_map(ao_ordr, ao_norm)
+    col_gam_map, scale_col, scale_gam = basis.construct_map(ao_ordr, ao_norm)
 
-    # remove the dalton normalization factors
+    # remove the COLUMBUS normalization factors
     gam_orb.scale(scale_col)
 
     # re-sort orbitals to GAMESS ordering
-    gam_orb.sort_aos(dalt_gam_map)
+    gam_orb.sort_aos(col_gam_map)
 
     # apply the GAMESS normalization factors
     gam_orb.scale(scale_gam)
@@ -340,7 +341,7 @@ def parse_ci_file(ci_file, is_cipc):
 
             # read in frzn/intl/extl orbitals from map array
             if 'map' in line and is_cipc:
-                mapraw = '' 
+                mapraw = ''
                 while 'mu' not in line:
                     line_str = line.replace('map(*)=','').lstrip().rstrip()
                     npad     = 0
@@ -351,7 +352,7 @@ def parse_ci_file(ci_file, is_cipc):
                 orb_str = mapraw.replace('map(*)=','')
                 orb_str = ' '+orb_str.lstrip()
                 orb_lst = [int(orb_str[i:i+3]) for i in range(0,len(orb_str),3)]
-                irrep   = 0 
+                irrep   = 0
                 new_irr = True
                 for x in range(len(orb_lst)):
                     if orb_lst[x] in frzn_ind:
@@ -383,11 +384,9 @@ def parse_ci_file(ci_file, is_cipc):
             # read the number of docc orbitals (if mcpcls)
             if 'List of doubly occupied orbitals' in line and not is_cipc:
                 read_docc = True
-                continue
 
             if 'List of active orbitals:' in line and not is_cipc:
                 read_act = True
-                continue
 
             # read in the number of doubly occupied orbitals (for mcpcls)
             if read_docc:
@@ -395,13 +394,11 @@ def parse_ci_file(ci_file, is_cipc):
                 if len(l_arr) == 0:
                     read_docc = False
                     ndocc = sum([len(docc[i]) for i in range(len(docc))])
-                    continue
                 else:
                     docc = [[] for i in range(nirr)]
                     for i in range(int(l_arr/2)):
                         sym_ind = ir_lab.index(l_arr[2*i+1])
                         docc[sym_ind].extend([int(l_arr[2*i])-1])
-                    continue
 
             # read in active orbitals
             if read_act:
@@ -411,13 +408,11 @@ def parse_ci_file(ci_file, is_cipc):
                     orb_map = list(itertools.chain.from_iterable(docc))
                     orb_map += list(itertools.chain.from_iterable(intl))
                     orb_inds = [docc[i]+intl[i] for i in range(nirr)]
-                    continue
                 else:
                     intl = [[] for i in range(len(ir_lab))]
                     for i in range(int(l_arr/2)):
                         sym_ind = ir_lab.index(l_arr[2*i+1])
                         intl[sym_ind].extend([int(l_arr[2*i])-1])
-                    continue
 
 
             # about to start reading csf list:
@@ -425,7 +420,6 @@ def parse_ci_file(ci_file, is_cipc):
                 istate += 1
                 csf_list.append([])
                 parse_line = True
-                continue
 
             # read a csf line
             if parse_line:
@@ -434,14 +428,12 @@ def parse_ci_file(ci_file, is_cipc):
                 # stopping criteria for cipcls
                 if 'csfs were printed' in line:
                     parse_line = False
-                    continue
 
                 # stopping crieria for mcpcls
                 if len(l_arr) == 0:
                     parse_line = False
-                    continue
 
-                n_int, n_ext, csf_vec = parse_ci_line(is_cipc, ndocc, 
+                n_int, n_ext, csf_vec = parse_ci_line(is_cipc, ndocc,
                                                       ir_lab, orb_inds, l_arr)
                 csf_list[istate].append([float(l_arr[1]),csf_vec])
 
