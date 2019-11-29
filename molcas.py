@@ -39,7 +39,6 @@ ao_norm     = [[1.],
 # dyy -> -d0 - d2+
 # dyz ->  d1-
 # dzz ->  d0
-
 # f ordering: f3-, f2-, f1-, f0, f1+, f2+, f3+
 # fxxx -> -f1+ + f3+
 # fxxy -> -f1- + f3-
@@ -75,7 +74,6 @@ sph2cart = [
      [[0, 2], [-np.sqrt(6.), -np.sqrt(6.)]],
      [[3, 5], [2./3., 0.]]] 
    ]
-
 
 def parse(geom_file, geom_ordr, basis_file, mo_file):
     """Parses a set of molcas input files.
