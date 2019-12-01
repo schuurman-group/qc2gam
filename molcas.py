@@ -244,11 +244,14 @@ def sort_molcas_orbs(in_cart, basis, orb_raw):
         n_ang   = [ang_lst.count(iang) for iang in range(ang_max)] 
         for iang in range(ang_max):
             for ifunc in range(n_ang[iang]):
-                istr = str(ifunc)
-                std_array.extend([istr+aos[iang][i] for i in range(len(aos[iang]))]) 
+                istr = str(iatom)+str(ifunc)
+                std_array.extend([istr+aos[iang][i] 
+                                  for i in range(len(aos[iang]))]) 
             for ifunc in range(nfunc[iang]):
-                molc_array.extend([str(i)+aos[iang][ifunc] for i in range(n_ang[iang])]) 
-
+                istr = str(iatom)
+                molc_array.extend([istr+str(i)+aos[iang][ifunc] 
+                                  for i in range(n_ang[iang])]) 
+ 
     map_array = [molc_array.index(std_array[i]) for i in range(n_mo)]
     orb_sort  = np.array([orb_raw[map_array,i_mo] for i_mo in range(n_mo)], dtype=float).T
 
