@@ -47,6 +47,9 @@ ao_norm = [[1.],
 # fyyz -> -(3/(2*sqrt(5))*f0  - (sqrt(3)/2)*f2+
 # fyzz -> -(sqrt(3)/2)*f3- - (3/(2*sqrt(5))*f1-
 # fzzz -> f0
+a        = 2.*np.sqrt(2./3.)
+b        = np.sqrt(6.)
+c        = np.sqrt(2./3.)
 sph2cart = [
     [[[0], [1.]]],                           # conversion for s orbitals
     [[[0], [1.]], [[1], [1.]], [[2], [1.]]], # conversion for p orbitals
@@ -56,16 +59,16 @@ sph2cart = [
      [[2, 4], [-1., -1.]],
      [[1], [1.]],
      [[2], [2.]]],
-    [[[4, 6], [2.*np.sqrt(2./3.), 0.]],      # conversion for f orbitals
-     [[0, 2], [np.sqrt(6.), -np.sqrt(6.)]],
+    [[[4, 6], [a, 0.]],      # conversion for f orbitals
+     [[0, 2], [b, -b]],
      [[3, 5], [-1., 1.]],
-     [[4, 6], [-np.sqrt(6.), np.sqrt(2./3.)]],
+     [[4, 6], [-b, c]],
      [[1], [1.]],
-     [[4, 6], [-np.sqrt(6.), -np.sqrt(2./3.)]],
-     [[0, 2], [0, 2.*np.sqrt(2./3.)]],
+     [[4, 6], [-b, -c]],
+     [[0, 2], [0, a]],
      [[3, 5], [-1., -1.]],
-     [[0, 2], [-np.sqrt(6.), -np.sqrt(6.)]],
-     [[3, 5], [2./3., 0.]]]
+     [[0, 2], [-b, -b]],
+     [[3, 5], [c**2, 0.]]]
             ]
 
 orb_map = None

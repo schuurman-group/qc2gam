@@ -50,29 +50,33 @@ ao_norm     = [[1.],
 # fyyz -> -f0  - f2+
 # fyzz ->  f1-
 # fzzz ->  f0
+a        = 1./(2.*np.sqrt(3.))
+b        = 1./2.
+c        = 1./np.sqrt(15.)
+d        = np.sqrt(3./5.)/2.
 sph2cart = [
     # conversion for s orbitals
     [[[0], [1.]]],
     # conversion for p orbitals
     [[[0], [1.]], [[1], [1.]], [[2], [1.]]],  
     # conversion for d orbitals
-    [[[2, 4], [-1./(2.*np.sqrt(3.)),  1./2.]], 
+    [[[2, 4], [-a,  b]], 
      [[0], [1.]],
      [[3], [1.]],
-     [[2, 4], [-1./(2.*np.sqrt(3.)), -1./2.]],
+     [[2, 4], [-a, -b]],
      [[1], [1.]],
      [[2], [1./np.sqrt(3.)]]],
     # conversion for f orbitals
-    [[[4, 6], [1./np.sqrt(15.), 0.]], 
-     [[0, 2], [1./2., -np.sqrt(3./5.)/2.]],
-     [[3, 5], [-np.sqrt(3./5.)/2., 1./2.]],
-     [[4, 6], [-np.sqrt(3./5.)/2., 1./2.]],
+    [[[4, 6], [c, 0.]], 
+     [[0, 2], [b, -d]],
+     [[3, 5], [-d, b]],
+     [[4, 6], [-d, b]],
      [[1],[1.]],
-     [[4, 6], [-np.sqrt(3./5.)/2., -1./2.]],
-     [[0, 2], [0, 1./np.sqrt(15.)]],
-     [[3, 5], [-np.sqrt(3./5.)/2., -1./2.]],
-     [[0, 2], [-1./2., -np.sqrt(3./5.)/2.]],
-     [[3, 5], [1./np.sqrt(15.), 0.]]] 
+     [[4, 6], [-d, -b]],
+     [[0, 2], [0, c]],
+     [[3, 5], [-d, -b]],
+     [[0, 2], [-b, -d]],
+     [[3, 5], [c, 0.]]] 
    ]
 
 def parse(geom_file, geom_ordr, basis_file, mo_file):
@@ -235,9 +239,9 @@ def sort_molcas_orbs(in_cart, basis, orb_raw):
     std_array   = []
     molc_array  = []
     for iatom in range(len(basis.n_bf)):
-        n_ang = np.zeros(ang_max, dtype=int)
-        for ibf in range(len(basis.basis_funcs[iatom])):
-            n_ang[basis.basis_funcs[iatom][ibf].ang_mom] += 1
+        nbf     = len(basis.basis_funcs[iatom])
+        ang_lst = [basis.basis_funcs[iatom][ibf].ang_mom for ibf in range(nbf)]
+        n_ang   = [ang_lst.count(iang) for iang in range(ang_max)] 
         for iang in range(ang_max):
             for ifunc in range(n_ang[iang]):
                 istr = str(ifunc)

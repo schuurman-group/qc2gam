@@ -46,27 +46,33 @@ ao_norm = [[1.],
 # fxzz ->  f1 * sqrt(2/5)
 # fyzz ->  f1-* sqrt(2/5)
 # fxyz ->  f2-
+a        = 1./2.
+b        = np.sqrt(2.)
+c        = np.sqrt(3.)
+d        = np.sqrt(5.)
+f        = np.sqrt(6.)
+g        = np.sqrt(10.)
+h        = np.sqrt(15.)
 sph2cart = [
     [[[0], [1.]]],                                          # conversion for s orbitals
     [[[0], [1.]], [[1], [1.]], [[2], [1.]]],                # conversion for p orbitals
-    [[[0, 4], [-0.5/np.sqrt(3.),  0.5]],                    # conversion for d orbitals
-     [[0, 4], [-0.5/np.sqrt(3.), -0.5]],
-     [[0], [1./np.sqrt(3.)]],
+    [[[0, 4], [-a/c,  a]],                    # conversion for d orbitals
+     [[0, 4], [-a/c, -a]],
+     [[0], [1./c]],
      [[3], [1.]],
      [[1], [1.]],
      [[2], [1.]]],
-    [[[1, 5], [-1/(2.*np.sqrt(10.)), 1./(2.*np.sqrt(6.))]], # conversion for f orbitals
-     [[2, 6], [-1/(2.*np.sqrt(10.)), 1./(2.*np.sqrt(6.))]],
-     [[0], [1./np.sqrt(15.)]],
-     [[2, 6], [-1/(2.*np.sqrt(10.)), -np.sqrt(3.)/(2.*np.sqrt(2.))]],
-     [[0, 4], [-np.sqrt(3./5.)/2., 1./2.]],
-     [[1, 5], [-1/(2.*np.sqrt(10.)), -np.sqrt(3.)/(2.*np.sqrt(2.))]],
-     [[0, 4], [-np.sqrt(3./5.)/2., -1./2.]],
-     [[1], [np.sqrt(2./5.)]],
-     [[2], [np.sqrt(2./5.)]],
+    [[[1, 5], [-a/g, a/f]], # conversion for f orbitals
+     [[2, 6], [-a/g, a/f]],
+     [[0], [1./h]],
+     [[2, 6], [-a/g, -a*c/b]],
+     [[0, 4], [-a*c/d, a]],
+     [[1, 5], [-a/g, -a*c/b]],
+     [[0, 4], [-a*c/d, -a]],
+     [[1], [b/d]],
+     [[2], [b/d]],
      [[3], [1.]]]
             ]
-
 
 def parse(geom_file, geom_ordr, basis_file, mo_file):
     """Parses a set of turbomole input files."""
