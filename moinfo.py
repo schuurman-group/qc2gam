@@ -5,33 +5,33 @@ of MO information
 import os
 import numpy as np
 
-a_symbols       = [' H','HE',
-                   'LI','BE',' B',' C',' N',' O',' F','NE',
-                   'NA','MG','AL','SI',' P',' S','CL','AR']
+a_symbols   = [' H','HE',
+               'LI','BE',' B',' C',' N',' O',' F','NE',
+               'NA','MG','AL','SI',' P',' S','CL','AR']
 
-a_numbers       = [ '1.0', '2.0',
-                    '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0','10.0',
-                   '11.0','12.0','13.0','14.0','15.0','16.0','17.0','18.0']
+a_numbers   = [ '1.0', '2.0',
+                '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0','10.0',
+               '11.0','12.0','13.0','14.0','15.0','16.0','17.0','18.0']
 
-ang_mom_sym     = ['S','P','D','F','G','H','I']
+ang_mom_sym = ['S','P','D','F','G','H','I']
 
-nfunc_cart      = [1, 3, 6, 10]
+nfunc_cart  = [1, 3, 6, 10]
 
-nfunc_sph       = [1, 3, 5, 7]
+nfunc_sph   = [1, 3, 5, 7]
 
-ao_ordr         = [['s'],
-                   ['px','py','pz'],
-                   ['dxx','dyy','dzz','dxy','dxz','dyz'],
-                   ['fxxx','fyyy','fzzz','fxxy','fxxz',
-                    'fxyy','fyyz','fxzz','fyzz','fxyz']]
+ao_ordr     = [['s'],
+               ['px','py','pz'],
+               ['dxx','dyy','dzz','dxy','dxz','dyz'],
+               ['fxxx','fyyy','fzzz','fxxy','fxxz',
+                'fxyy','fyyz','fxzz','fyzz','fxyz']]
 
-ao_norm         = [[1.],
-                   [1.,1.,1.],
-                   [1.,1.,1.,np.sqrt(3.),np.sqrt(3.),np.sqrt(3.)],
-                   [1.,1.,1.,np.sqrt(5.),np.sqrt(5.),np.sqrt(5.),
-                             np.sqrt(5.),np.sqrt(5.),np.sqrt(5.),np.sqrt(15.)]]
+ao_norm     = [[1.],
+               [1.,1.,1.],
+               [1.,1.,1.,np.sqrt(3.),np.sqrt(3.),np.sqrt(3.)],
+               [1.,1.,1.,np.sqrt(5.),np.sqrt(5.),np.sqrt(5.),
+                         np.sqrt(5.),np.sqrt(5.),np.sqrt(5.),np.sqrt(15.)]]
 
-au2ang          = 0.529177249
+au2ang      = 0.529177249
 
 
 def sph2cart(basis, mo_sph, s2c):
@@ -50,7 +50,7 @@ def sph2cart(basis, mo_sph, s2c):
                         for k in range(len(s2c[lval][j][0]))])
                         for j in range(nfunc_cart[lval])]
             orb_trans[imo].extend(cart_orb)
-        iao_sph  += nfunc_sph[lval]
+        iao_sph += nfunc_sph[lval]
 
     if iao_sph != basis.n_bf_sph:
         raise ValueError('Error in sph2cart: {:d} '.format(iao_sph) +
