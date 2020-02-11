@@ -194,7 +194,7 @@ def read_mos(mocoef_file, in_cart, basis):
 
     # MOLCAS requires an intermediate sort
     molc_orb = sort_molcas_orbs(in_cart, basis, np.array(raw_orbs).T)
-#    molc_orb = np.array(raw_orbs).T
+    #molc_orb = np.array(raw_orbs).T
 
     # if in spherically adapted orbitals, first convert
     # to cartesians

@@ -47,7 +47,7 @@ c        = np.sqrt(5.)
 sph2cart = [
     [[[0], [1.]]],                           # conversion for s orbitals
     [[[0], [1.]], [[1], [1.]], [[2], [1.]]], # conversion for p orbitals
-    [[[0, 3], [-a,  a*b]],     # conversion for d orbitals
+    [[[0, 3], [-a,  a*b]],                   # conversion for d orbitals
      [[0, 3], [-a, -a*b]],
      [[0], [1.]],
      [[4], [1.]],

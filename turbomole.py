@@ -54,8 +54,8 @@ f        = np.sqrt(6.)
 g        = np.sqrt(10.)
 h        = np.sqrt(15.)
 sph2cart = [
-    [[[0], [1.]]],                                          # conversion for s orbitals
-    [[[0], [1.]], [[1], [1.]], [[2], [1.]]],                # conversion for p orbitals
+    [[[0], [1.]]],                            # conversion for s orbitals
+    [[[0], [1.]], [[1], [1.]], [[2], [1.]]],  # conversion for p orbitals
     [[[0, 4], [-a/c,  a]],                    # conversion for d orbitals
      [[0, 4], [-a/c, -a]],
      [[0], [1./c]],
@@ -136,52 +136,47 @@ def read_basis(basis_file, geom):
         i += 1
 
     # iterate over the atom types
-    b_set     = ''
-    a_sym     = ''
     sec_start = False
     i        += 1
     while True:
         line = bfile[i].split()
 
-        # stepping on $end line breaks us out of parser
         if line[0] == '$end':
+            # stepping on $end line breaks us out of parser
             break
-
-        # ignore blank lines
-        if len(line) == 0:
+        elif len(line) == 0:
+            # ignore blank lines
             i += 1
-
-        # ignore comment lines
-        if line[0][0] == '#':
+        elif line[0][0] == '#':
+            # ignore comment lines
             i += 1
-
-        # if first string is star, either
-        # beginning or ending basis section
-        if line[0] == '*':
+        elif line[0] == '*':
+            # if first string is star, either
+            # beginning or ending basis section
             sec_start = not sec_start
             i += 1
-
-        # if starting section, first line
-        # is atom and basis set line
-        if sec_start:
+        elif sec_start:
+            # if starting section, first line
+            # is atom and basis set line
             a_sym = line[0]
             b_set = line[1]
             a_lst = [ind for ind,sym in enumerate([geom.atoms[k].symbol
                        for k in range(geom.natoms())])
                        if sym == a_sym.upper().rjust(2)]
             i += 1
+        else:
+            # if we get this far, we're parsing the basis set!
+            nprim, ang_sym = line
+            ang_mom        = moinfo.ang_mom_sym.index(ang_sym.upper())
+            bfunc          = moinfo.BasisFunction(ang_mom)
+            for j in range(int(nprim)):
+                i += 1
+                exp, coef = bfile[i].split()
+                bfunc.add_primitive(float(exp), float(coef))
+            for atom in a_lst:
+                basis.add_function(atom, bfunc)
 
-        # if we get this far, we're parsing the basis set!
-        nprim, ang_sym = line
-        ang_mom          = moinfo.ang_mom_sym.index(ang_sym.upper())
-        bfunc            = moinfo.BasisFunction(ang_mom)
-        for j in range(int(nprim)):
             i += 1
-            exp, coef = bfile[i].split()
-            bfunc.add_primitive(float(exp), float(coef))
-        for atom in a_lst:
-            basis.add_function(atom, bfunc)
-        i += 1
 
     return in_cartesians, basis
 
