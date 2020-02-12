@@ -316,7 +316,6 @@ def parse_ci_file(ci_file, is_cipc):
     istate     = -1
     with open(ci_file, 'r') as cipcls:
         for line in cipcls:
-
             # read in irrep labels
             if 'i:slabel' in line and is_cipc:
                 line   = line.replace('i:slabel(i) =','').split()
@@ -384,15 +383,12 @@ def parse_ci_file(ci_file, is_cipc):
                 orb_map += list(itertools.chain.from_iterable(extl))
                 orb_inds = [docc[i]+intl[i]+extl[i] for i in range(irrep)]
 
-            # read the number of docc orbitals (if mcpcls)
             if 'List of doubly occupied orbitals' in line and not is_cipc:
                 read_docc = True
-
-            if 'List of active orbitals:' in line and not is_cipc:
+            elif 'List of active orbitals:' in line and not is_cipc:
                 read_act = True
-
-            # read in the number of doubly occupied orbitals (for mcpcls)
-            if read_docc:
+            elif read_docc:
+                # read in the number of doubly occupied orbitals (for mcpcls)
                 l_arr = line.split()
                 if len(l_arr) == 0:
                     read_docc = False
@@ -403,8 +399,8 @@ def parse_ci_file(ci_file, is_cipc):
                         sym_ind = ir_lab.index(l_arr[2*i+1])
                         docc[sym_ind].extend([int(l_arr[2*i])-1])
 
-            # read in active orbitals
-            if read_act:
+            elif read_act:
+                # read in active orbitals
                 l_arr = line.split()
                 if len(l_arr) == 0:
                     read_act = False
@@ -417,32 +413,30 @@ def parse_ci_file(ci_file, is_cipc):
                         sym_ind = ir_lab.index(l_arr[2*i+1])
                         intl[sym_ind].extend([int(l_arr[2*i])-1])
 
-
-            # about to start reading csf list:
-            if ci_str in line or mc_str in line:
+            elif ci_str in line or mc_str in line:
+                # about to start reading csf list:
                 istate += 1
                 csf_list.append([])
                 parse_line = True
 
-            # read a csf line
-            if parse_line:
+            elif parse_line:
+                # read a csf line
                 l_arr = line.replace(':','').split()
 
-                # stopping criteria for cipcls
                 if 'csfs were printed' in line:
+                    # stopping criteria for cipcls
                     parse_line = False
-
-                # stopping crieria for mcpcls
-                if len(l_arr) == 0:
+                elif len(l_arr) == 0:
+                    # stopping crieria for mcpcls
                     parse_line = False
+                else:
+                    n_int, n_ext, csf_vec = parse_ci_line(is_cipc, ndocc,
+                                                          ir_lab, orb_inds, l_arr)
+                    csf_list[istate].append([float(l_arr[1]),csf_vec])
 
-                n_int, n_ext, csf_vec = parse_ci_line(is_cipc, ndocc,
-                                                      ir_lab, orb_inds, l_arr)
-                csf_list[istate].append([float(l_arr[1]),csf_vec])
-
-                # total number of external orbitals is set to the csfs with
-                # highest excitation order
-                nextl = max(nextl, n_ext)
+                    # total number of external orbitals is set to the csfs with
+                    # highest excitation order
+                    nextl = max(nextl, n_ext)
 
     return n_int, nextl, csf_list
 
