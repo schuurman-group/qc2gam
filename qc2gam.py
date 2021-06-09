@@ -60,17 +60,22 @@ def convert(inp, gm, go, basis, mos, ci, out):
     # import the appropriate module
     qc_input = __import__(inp, fromlist=['a'])
 
+    # if the determinant list only involves the first nmo_prnt, we only
+    # should print the first nmo_prnt orbs to file
     if ci is not None:
-        qc_input.generate_csf_list(ci)
-
+        nmo_prnt = qc_input.generate_csf_list(ci)
+    else:
+        # default is to print all MOs on file
+        nmo_prnt = -1
+ 
     # parse the output and convert to GAMESS format
     gam_basis, gam_mos = qc_input.parse(gm, go, basis, mos)
 
     # print the MOs file
     gam_basis.print_basis_set(out)
-    gam_mos.print_orbitals(out)
+    gam_mos.print_orbitals(out, n_orb = nmo_prnt)
     if gam_mos.occ is not None:
-        gam_mos.print_occ(out)
+        gam_mos.print_occ(out, n_orb = nmo_prnt)
 
 
 if __name__ == '__main__':

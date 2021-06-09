@@ -257,4 +257,158 @@ def sort_molcas_orbs(in_cart, basis, orb_raw):
 
     return orb_sort     
 
-    
+def generate_csf_list(ci_file):
+    """This routine parses a molcas log file and pulls out the determinants
+       assuming the keyword PRSD has been used. So: this function name
+       is a misnomer. That should be fixed in the future. This routine
+       parses an entire input file and pulls out all the determinant lists,
+       if more than one RASSCF section is present, numerals "2", "3", etc.
+       will be appended to the determinant list file names"""
+
+    # number of 'frozen' orbitals (doubly occupied)
+    # number of act = RAS1 + RAS2 + RAS3
+    # unique list of determinants with coefficients
+    parse_molcas_log(ci_file)
+
+    return
+
+def generate_csf_list(ci_file):
+    """This routine parses a molcas log file and pulls out the determinants
+       assuming the keyword PRSD has been used. So: this function name
+       is a misnomer. That should be fixed in the future. This routine
+       parses an entire input file and pulls out all the determinant lists,
+       if more than one RASSCF section is present, numerals "2", "3", etc.
+       will be appended to the determinant list file names"""
+
+    dfile_suffix = [''] + ['_'+str(i) for i in range(10)]
+    dfile_prefix = ['S','D','T','Q','5']
+
+    ngrp         = 0
+    scan_roots   = False
+    det_list     = []
+    f_prefix     = ''
+    f_suffix     = ''
+    nclsd        = 0
+    nact         = 0
+    ntot         = 0
+    norb         = 0
+
+    with open(ci_file, 'r') as molcas_log:
+        for line in molcas_log:
+
+            # we've come across a new RASSCF section
+            if 'Number of closed shell electrons' in line:
+
+                # print the current determinant list from
+                # previous section
+                if ntot > 0:
+                    norb = max(norb, nclsd+nact)
+                    print_det_list(f_prefix, f_suffix, nclsd+nact, det_list)
+
+                # if there were any determinants in previous section
+                # update the grp variable (changes file suffix)
+                if sum([len(idets) for idets in det_list]) > 0:
+                    ngrp    += 1
+                    f_suffix = dfile_suffix[ngrp]
+
+                nclsd     = int(0.5*int(line.split()[5]))
+                clsd_orbs = [2] * nclsd
+                det_list  = []
+                iroot     = -1
+                ntot      = 0
+
+            if '      Active orbitals' in line:
+                nact = int(line.split()[2])
+
+            if 'Spin quantum number' in line:
+                S = float(line.split()[3])
+                f_prefix = dfile_prefix[int(2*S)]
+
+            # we've come across a potential determinant list
+            if 'printout of CI-coefficients larger than' in line:
+                iroot     += 1
+                scan_roots = True
+                det_list.append([])
+                
+            # need to extract csf weight to determine det cf:
+            if scan_roots and len(line.split()) == 4:
+                try:
+                    csf_cf = float(line.split()[2])
+                except:
+                    csf_cf = 0
+
+            # if we hit a determinant, add it to the list
+            if line[5:10] == 'sqrt(':
+                line_lst  = line.split()
+                sgn       = line_lst[0]
+                num,denom = line_lst[2].split('/')
+                cf        = csf_cf * np.sqrt( float(num) / float(denom))
+                if sgn == '-':
+                    cf *= -1.
+                det       = list(line_lst[4].strip('|'))
+                for orb, occ  in enumerate(det):
+                    if occ == 'a':
+                        det[orb] = 1
+                    elif occ == 'b':
+                        det[orb] = -1
+                    else:
+                        det[orb] = int(occ)
+                det_full = clsd_orbs + det
+
+                # if determinant is unique, add to list, else
+                # update the coefficient on existing det
+                found = False
+                for idet in range(len(det_list[iroot])):
+                    diff = [ai - bi for ai,bi in 
+                            zip(det_full, det_list[iroot][idet][1:])]
+                    if diff == [0]*(nclsd + nact):
+                        #update det_list coeff
+                        det_list[iroot][idet][0] += cf
+                        found = True
+                        break
+
+                # else, extend the list
+                if not found:
+                    det_list[iroot].append([cf]+det_full)
+                    ntot += 1      
+
+
+            # finding those csf weights is difficult, as the
+            # line formatting is not particularly unique. So:
+            # when we're out of the root listing section,
+            # stop looking for them
+            if scan_roots and 'Natural orbitals and ' in line:
+                scan_roots = False
+
+
+    return norb
+
+
+def print_det_list(f_prefix, f_suffix, norbs, det_list):
+    """Prints det list in csf2det format."""
+
+    det_fmt = ('{:14.10f}'+''.join('{:3d}' for i in range(norbs))+
+                           '\n')
+
+    nrm_file = open('norms.dat', 'x')
+
+    for st in range(len(det_list)):
+        fname    = f_prefix+str(st)+'_det'+f_suffix+'.dat'
+        dat_file = open(fname, 'w')
+
+        # sort the list
+        cf_abs = [abs(idet[0]) for idet in det_list[st]]
+        nrm    = np.sqrt(sum([icf**2 for icf in cf_abs]))
+        ordr = np.flip(np.argsort(cf_abs))
+
+        nrm_file.write(fname+': '+'{:10.5f}\n'.format(nrm))
+
+        for idet in range(len(det_list[st])):
+            det = det_list[st][ordr[idet]]
+            dat_file.write(det_fmt.format(*det))
+
+        dat_file.close()
+
+    nrm_file.close()
+    return
+

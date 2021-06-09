@@ -276,6 +276,7 @@ def generate_csf_list(ci_file):
     # print the csf_list to file
     print_csf_list(n_occ, n_extl, csf_list)
 
+    return -1
 
 def is_cipcls(in_file):
     """Returns true, true if the file to parse is a cipcls file,
